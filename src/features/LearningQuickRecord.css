@@ -326,4 +326,12 @@
   .review-form button {
     grid-column: auto;
   }
+
+  .resource-list li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .resource-list select {
+    grid-column: 1 / -1;
+  }
 }
