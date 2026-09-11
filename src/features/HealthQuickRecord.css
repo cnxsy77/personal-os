@@ -55,7 +55,7 @@
 
 .health-fields {
   display: grid;
-  grid-template-columns: 135px 83px 97px 96px minmax(0, 1fr) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(118px, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -100,11 +100,18 @@
 }
 
 .health-fields button {
+  grid-column: -2 / -1;
   align-self: end;
+  min-width: 118px;
+  white-space: nowrap;
 }
 
 .health-list-heading {
   margin: 24px 0 10px;
+}
+
+.health-fields > div:nth-child(5) {
+  grid-column: 1 / -2;
 }
 
 .health-list-heading h3 {
@@ -207,6 +214,11 @@
   .health-fields,
   .metric-fields {
     grid-template-columns: 1fr;
+  }
+
+  .health-fields > div:nth-child(5),
+  .health-fields button {
+    grid-column: auto;
   }
 
   .health-fields button,
