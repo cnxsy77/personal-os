@@ -52,6 +52,59 @@ describe('local Personal OS data', () => {
     expect(data.getSnapshot()).toBe(before)
   })
 
+  it('persists workbench projects and status changes', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.addProject({
+      name: ' CLI 同步工具 ',
+      goal: '让本地记录自动同步到云端',
+      status: 'active',
+      nextAction: '设计同步协议',
+      dueDate: '2026-09-18',
+    })
+    const projectId = data.getSnapshot().projects[0].id
+    data.setProjectStatus(projectId, 'blocked')
+
+    const reloaded = createLocalPersonalOSData({ storage })
+
+    expect(reloaded.getSnapshot().projects[0]).toMatchObject({
+      name: 'CLI 同步工具',
+      goal: '让本地记录自动同步到云端',
+      status: 'blocked',
+      nextAction: '设计同步协议',
+      dueDate: '2026-09-18',
+    })
+  })
+
+  it('rejects invalid projects without changing state', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+    const before = data.getSnapshot()
+
+    expect(() => data.addProject({
+      name: '  ',
+      goal: '有效目标',
+      status: 'active',
+      nextAction: '有效动作',
+    })).toThrow('项目名称不能为空')
+    expect(() => data.addProject({
+      name: '无效目标',
+      goal: '  ',
+      status: 'active',
+      nextAction: '有效动作',
+    })).toThrow('项目目标不能为空')
+    expect(() => data.addProject({
+      name: '无效日期',
+      goal: '有效目标',
+      status: 'active',
+      nextAction: '有效动作',
+      dueDate: '09-18',
+    })).toThrow('请选择有效的截止日期')
+
+    expect(data.getSnapshot()).toBe(before)
+  })
+
   it('persists quick finance records for the next session', () => {
     const storage = createMemoryStorage()
     const data = createLocalPersonalOSData({ storage })

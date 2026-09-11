@@ -9,6 +9,9 @@ import type {
   LearningResourceStatus,
   PersonalOSData,
   PersonalOSState,
+  Project,
+  ProjectInput,
+  ProjectStatus,
   StudyLog,
   StudyLogInput,
   TaskCategory,
@@ -83,6 +86,65 @@ export function createLocalPersonalOSData(
       done: false,
     }
     commit({ ...state, tasks: [...state.tasks, task] })
+  }
+
+  function addProject(input: ProjectInput) {
+    const name = input.name.trim()
+    const goal = input.goal.trim()
+    const nextAction = input.nextAction.trim()
+
+    if (!name) {
+      throw new Error('项目名称不能为空')
+    }
+
+    if (!goal) {
+      throw new Error('项目目标不能为空')
+    }
+
+    if (!nextAction) {
+      throw new Error('下一步动作不能为空')
+    }
+
+    if (!isProjectStatus(input.status)) {
+      throw new Error('请选择有效的项目状态')
+    }
+
+    if (
+      input.dueDate !== undefined &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)
+    ) {
+      throw new Error('请选择有效的截止日期')
+    }
+
+    commit({
+      ...state,
+      projects: [
+        {
+          id: createId(),
+          name,
+          goal,
+          status: input.status,
+          nextAction,
+          dueDate: input.dueDate,
+        },
+        ...state.projects,
+      ],
+    })
+  }
+
+  function setProjectStatus(id: string, status: ProjectStatus) {
+    const exists = state.projects.some((project) => project.id === id)
+
+    if (!exists) {
+      throw new Error('项目不存在')
+    }
+
+    commit({
+      ...state,
+      projects: state.projects.map((project) =>
+        project.id === id ? { ...project, status } : project,
+      ),
+    })
   }
 
   function addTask(input: TaskInput) {
@@ -321,6 +383,8 @@ export function createLocalPersonalOSData(
     toggleTask,
     addTask,
     addQuickTask,
+    addProject,
+    setProjectStatus,
     recordTransaction,
     recordStudyLog,
     updateMonthlyBudget,
@@ -363,6 +427,16 @@ function createSeedState(now: Date): PersonalOSState {
         date: toDateKey(now),
         time: '20:30',
         category: 'learning',
+      },
+    ],
+    projects: [
+      {
+        id: 'personal-os-project',
+        name: 'Personal OS',
+        goal: '建立统一的个人运营系统',
+        status: 'active',
+        nextAction: '完成项目工作台',
+        dueDate: toDateKey(now),
       },
     ],
     transactions: [
@@ -430,8 +504,11 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
     return fallback
   }
 
-  return {
+    return {
     tasks: value.tasks,
+    projects: Array.isArray(value.projects)
+      ? value.projects.filter(isProject)
+      : [],
     transactions: value.transactions,
     monthlyBudgetCents:
       typeof value.monthlyBudgetCents === 'number' &&
@@ -485,6 +562,31 @@ function isTaskCategory(value: unknown): value is TaskCategory {
     value === 'health' ||
     value === 'learning' ||
     value === 'life'
+  )
+}
+
+function isProject(value: unknown): value is Project {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    typeof value.goal === 'string' &&
+    typeof value.status === 'string' &&
+    isProjectStatus(value.status) &&
+    typeof value.nextAction === 'string' &&
+    (value.dueDate === undefined ||
+      (typeof value.dueDate === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(value.dueDate)))
+  )
+}
+
+function isProjectStatus(value: unknown): value is ProjectStatus {
+  return (
+    value === 'planned' ||
+    value === 'active' ||
+    value === 'blocked' ||
+    value === 'done'
   )
 }
 

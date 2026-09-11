@@ -17,6 +17,19 @@ export type TaskInput = {
   time?: string
 }
 
+export type ProjectStatus = 'planned' | 'active' | 'blocked' | 'done'
+
+export type Project = {
+  id: string
+  name: string
+  goal: string
+  status: ProjectStatus
+  nextAction: string
+  dueDate?: string
+}
+
+export type ProjectInput = Omit<Project, 'id'>
+
 export type TransactionKind = 'expense' | 'income'
 
 export type Transaction = {
@@ -100,6 +113,7 @@ export type HealthMetricInput = Omit<HealthMetric, 'id'>
 
 export type PersonalOSState = {
   tasks: Task[]
+  projects: Project[]
   transactions: Transaction[]
   studyLogs: StudyLog[]
   monthlyBudgetCents: number
@@ -116,6 +130,8 @@ export type PersonalOSData = {
   toggleTask: (id: string) => void
   addTask: (input: TaskInput) => void
   addQuickTask: (title: string) => void
+  addProject: (input: ProjectInput) => void
+  setProjectStatus: (id: string, status: ProjectStatus) => void
   recordTransaction: (input: TransactionInput) => void
   recordStudyLog: (input: StudyLogInput) => void
   updateMonthlyBudget: (monthlyBudgetCents: number) => void
