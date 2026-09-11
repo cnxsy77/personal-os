@@ -3,6 +3,18 @@ export type Task = {
   title: string
   meta: string
   done: boolean
+  date?: string
+  time?: string
+  category?: TaskCategory
+}
+
+export type TaskCategory = 'work' | 'health' | 'learning' | 'life'
+
+export type TaskInput = {
+  title: string
+  date: string
+  category: TaskCategory
+  time?: string
 }
 
 export type TransactionKind = 'expense' | 'income'
@@ -102,6 +114,7 @@ export type PersonalOSData = {
   subscribe: (listener: () => void) => () => void
   getSnapshot: () => PersonalOSState
   toggleTask: (id: string) => void
+  addTask: (input: TaskInput) => void
   addQuickTask: (title: string) => void
   recordTransaction: (input: TransactionInput) => void
   recordStudyLog: (input: StudyLogInput) => void

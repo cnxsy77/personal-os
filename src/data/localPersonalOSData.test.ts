@@ -3,6 +3,55 @@ import { createLocalPersonalOSData } from './localPersonalOSData'
 import { createMemoryStorage } from '../test/memoryStorage'
 
 describe('local Personal OS data', () => {
+  it('persists planned tasks for the next session', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.addTask({
+      title: ' 准备架构评审 ',
+      date: '2026-09-11',
+      category: 'work',
+      time: '09:30',
+    })
+
+    const reloaded = createLocalPersonalOSData({ storage })
+    const latest = reloaded.getSnapshot().tasks.at(-1)
+
+    expect(latest).toMatchObject({
+      title: '准备架构评审',
+      meta: '工作 · 09:30',
+      done: false,
+      date: '2026-09-11',
+      time: '09:30',
+      category: 'work',
+    })
+  })
+
+  it('rejects invalid planned tasks without changing state', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+    const before = data.getSnapshot()
+
+    expect(() => data.addTask({
+      title: '  ',
+      date: '2026-09-11',
+      category: 'work',
+    })).toThrow('计划内容不能为空')
+    expect(() => data.addTask({
+      title: '无效日期',
+      date: '09-11',
+      category: 'work',
+    })).toThrow('请选择有效的计划日期')
+    expect(() => data.addTask({
+      title: '无效时间',
+      date: '2026-09-11',
+      category: 'work',
+      time: '9:30',
+    })).toThrow('请选择有效的计划时间')
+
+    expect(data.getSnapshot()).toBe(before)
+  })
+
   it('persists quick finance records for the next session', () => {
     const storage = createMemoryStorage()
     const data = createLocalPersonalOSData({ storage })

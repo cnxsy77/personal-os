@@ -11,6 +11,8 @@ import type {
   PersonalOSState,
   StudyLog,
   StudyLogInput,
+  TaskCategory,
+  TaskInput,
   TransactionInput,
   Transaction,
   Task,
@@ -23,6 +25,13 @@ import type {
 } from './model'
 
 const storageKey = 'personal-os:v1'
+
+const taskCategoryLabels: Record<TaskCategory, string> = {
+  work: '工作',
+  health: '健康',
+  learning: '学习',
+  life: '生活',
+}
 
 type LocalDataOptions = {
   storage?: Storage
@@ -73,6 +82,38 @@ export function createLocalPersonalOSData(
       meta: '工作 · 今天',
       done: false,
     }
+    commit({ ...state, tasks: [...state.tasks, task] })
+  }
+
+  function addTask(input: TaskInput) {
+    const title = input.title.trim()
+
+    if (!title) {
+      throw new Error('计划内容不能为空')
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+      throw new Error('请选择有效的计划日期')
+    }
+
+    if (!isTaskCategory(input.category)) {
+      throw new Error('请选择有效的计划分类')
+    }
+
+    if (input.time !== undefined && !/^\d{2}:\d{2}$/.test(input.time)) {
+      throw new Error('请选择有效的计划时间')
+    }
+
+    const task: Task = {
+      id: createId(),
+      title,
+      meta: `${taskCategoryLabels[input.category]} · ${input.time ?? '全天'}`,
+      done: false,
+      date: input.date,
+      time: input.time,
+      category: input.category,
+    }
+
     commit({ ...state, tasks: [...state.tasks, task] })
   }
 
@@ -278,6 +319,7 @@ export function createLocalPersonalOSData(
     subscribe,
     getSnapshot,
     toggleTask,
+    addTask,
     addQuickTask,
     recordTransaction,
     recordStudyLog,
@@ -300,18 +342,27 @@ function createSeedState(now: Date): PersonalOSState {
         title: '完成 Personal OS 仪表盘 MVP',
         meta: '工作 · 09:30',
         done: false,
+        date: toDateKey(now),
+        time: '09:30',
+        category: 'work',
       },
       {
         id: 'push-day',
         title: '力量训练：推（45 分钟）',
         meta: '健康 · 18:30',
         done: false,
+        date: toDateKey(now),
+        time: '18:30',
+        category: 'health',
       },
       {
         id: 'react-study',
         title: '学习 React 架构设计 45 分钟',
         meta: '学习 · 20:30',
         done: false,
+        date: toDateKey(now),
+        time: '20:30',
+        category: 'learning',
       },
     ],
     transactions: [
@@ -418,7 +469,22 @@ function isTask(value: unknown): value is Task {
     typeof value.id === 'string' &&
     typeof value.title === 'string' &&
     typeof value.meta === 'string' &&
-    typeof value.done === 'boolean'
+    typeof value.done === 'boolean' &&
+    (value.date === undefined ||
+      (typeof value.date === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(value.date))) &&
+    (value.time === undefined ||
+      (typeof value.time === 'string' && /^\d{2}:\d{2}$/.test(value.time))) &&
+    (value.category === undefined || isTaskCategory(value.category))
+  )
+}
+
+function isTaskCategory(value: unknown): value is TaskCategory {
+  return (
+    value === 'work' ||
+    value === 'health' ||
+    value === 'learning' ||
+    value === 'life'
   )
 }
 

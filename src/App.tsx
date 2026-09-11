@@ -17,6 +17,7 @@ import { usePersonalOSData } from './data/usePersonalOSData'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
 import { HealthQuickRecord } from './features/HealthQuickRecord'
 import { LearningQuickRecord } from './features/LearningQuickRecord'
+import { PlanQuickRecord } from './features/PlanQuickRecord'
 import {
   getCompletedWorkoutsThisWeek,
   getLatestHealthMetric,
@@ -119,7 +120,13 @@ export default function App({ data = defaultData }: AppProps) {
           </button>
         </header>
 
-        {active === '财务' ? (
+        {active === '计划' ? (
+          <PlanQuickRecord
+            tasks={state.tasks}
+            onTaskSubmit={data.addTask}
+            onTaskToggle={data.toggleTask}
+          />
+        ) : active === '财务' ? (
           <FinanceQuickRecord
             monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
