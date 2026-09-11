@@ -12,6 +12,7 @@ describe('workbench quick capture', () => {
     render(<App data={data} />)
 
     await user.click(screen.getByRole('button', { name: '工作台' }))
+    await user.click(screen.getByRole('button', { name: '添加项目' }))
     await user.type(screen.getByLabelText('项目名称'), 'CLI 同步工具')
     await user.type(screen.getByLabelText('项目目标'), '让本地记录自动同步')
     await user.selectOptions(screen.getByLabelText('项目状态'), 'active')
@@ -21,6 +22,9 @@ describe('workbench quick capture', () => {
     })
     await user.click(screen.getByRole('button', { name: '保存项目' }))
 
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('项目已保存')).toBeInTheDocument()
+    expect(screen.getByText('项目总数').parentElement).toHaveTextContent('2 项')
     expect(screen.getByRole('list', { name: '项目列表' })).toHaveTextContent(
       'CLI 同步工具',
     )
@@ -38,5 +42,19 @@ describe('workbench quick capture', () => {
     )
 
     expect(data.getSnapshot().projects[0].status).toBe('blocked')
+  })
+
+  it('keeps the dialog open when the project is invalid', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '工作台' }))
+    await user.click(screen.getByRole('button', { name: '添加项目' }))
+    await user.click(screen.getByRole('button', { name: '保存项目' }))
+
+    expect(screen.getByRole('dialog', { name: '添加项目' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('请输入项目名称')
+    expect(data.getSnapshot().projects).toHaveLength(1)
   })
 })

@@ -5,14 +5,22 @@ import {
   CircleCheck,
   ClipboardList,
   FolderGit2,
+  Plus,
   Rocket,
   Target,
 } from 'lucide-react'
+import { RecordDialog } from '../components/RecordDialog'
 import type { Project, ProjectInput, ProjectStatus } from '../data/model'
 import './WorkbenchQuickRecord.css'
 
 type Props = {
   projects: Project[]
+  dialogOpen: boolean
+  dialogTab?: string
+  dialogOnly?: boolean
+  onDialogOpen: (tab?: string) => void
+  onDialogClose: () => void
+  onSaved: (message: string) => void
   onProjectSubmit: (input: ProjectInput) => void
   onProjectStatusChange: (id: string, status: ProjectStatus) => void
 }
@@ -44,6 +52,12 @@ const filterLabels: Record<ProjectFilter, string> = {
 
 export function WorkbenchQuickRecord({
   projects,
+  dialogOpen,
+  dialogTab = 'project',
+  dialogOnly = false,
+  onDialogOpen,
+  onDialogClose,
+  onSaved,
   onProjectSubmit,
   onProjectStatusChange,
 }: Props) {
@@ -77,6 +91,16 @@ export function WorkbenchQuickRecord({
   }))
   const distributionTotal = Math.max(1, projects.length)
 
+  function openDialog() {
+    setError('')
+    onDialogOpen(dialogTab)
+  }
+
+  function closeDialog() {
+    setError('')
+    onDialogClose()
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
 
@@ -106,18 +130,104 @@ export function WorkbenchQuickRecord({
     setGoal('')
     setNextAction('')
     setError('')
+    closeDialog()
+    onSaved('项目已保存')
+  }
+
+  const workbenchDialog = (
+    <RecordDialog
+      activeTab={dialogTab}
+      description="创建新的工作台项目。"
+      onClose={closeDialog}
+      open={dialogOpen}
+      title="添加项目"
+    >
+      <form onSubmit={submit} className="workbench-form">
+        <div className="workbench-fields">
+          <div className="wide">
+            <label htmlFor="project-name">项目名称</label>
+            <input
+              id="project-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="例如：Personal OS"
+            />
+          </div>
+          <div className="wide">
+            <label htmlFor="project-goal">项目目标</label>
+            <input
+              id="project-goal"
+              value={goal}
+              onChange={(event) => setGoal(event.target.value)}
+              placeholder="这个项目完成后会带来什么改变？"
+            />
+          </div>
+          <div>
+            <label htmlFor="project-status">项目状态</label>
+            <select
+              id="project-status"
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as ProjectStatus)
+              }
+            >
+              {projectStatuses.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="wide">
+            <label htmlFor="project-next-action">下一步动作</label>
+            <input
+              id="project-next-action"
+              value={nextAction}
+              onChange={(event) => setNextAction(event.target.value)}
+              placeholder="写下推进项目的最小可执行动作"
+            />
+          </div>
+          <div>
+            <label htmlFor="project-due-date">截止日期</label>
+            <input
+              id="project-due-date"
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+            />
+          </div>
+          <button type="submit">
+            <FolderGit2 size={16} />
+            保存项目
+          </button>
+        </div>
+        {error ? <p role="alert">{error}</p> : null}
+      </form>
+    </RecordDialog>
+  )
+
+  if (dialogOnly) {
+    return workbenchDialog
   }
 
   return (
     <div className="workbench-page">
       <section className="workbench-panel" aria-labelledby="workbench-title">
-        <h2 id="workbench-title">项目工作台</h2>
+        <div className="panel-heading">
+          <h2 id="workbench-title">项目工作台</h2>
+          <button
+            className="page-add"
+            onClick={openDialog}
+            type="button"
+          >
+            <Plus size={16} />
+            添加项目
+          </button>
+        </div>
 
         <div className="workbench-summary">
           <div>
-            <label>进行中</label>
+            <label>项目总数</label>
             <strong>
-              {projects.filter((project) => project.status === 'active').length} 项
+              {projects.length} 项
             </strong>
           </div>
           <div>
@@ -137,66 +247,6 @@ export function WorkbenchQuickRecord({
             <strong>{dueProjects.length} 项</strong>
           </div>
         </div>
-
-        <form onSubmit={submit} className="workbench-form">
-          <div className="workbench-fields">
-            <div className="wide">
-              <label htmlFor="project-name">项目名称</label>
-              <input
-                id="project-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="例如：Personal OS"
-              />
-            </div>
-            <div className="wide">
-              <label htmlFor="project-goal">项目目标</label>
-              <input
-                id="project-goal"
-                value={goal}
-                onChange={(event) => setGoal(event.target.value)}
-                placeholder="这个项目完成后会带来什么改变？"
-              />
-            </div>
-            <div>
-              <label htmlFor="project-status">项目状态</label>
-              <select
-                id="project-status"
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as ProjectStatus)
-                }
-              >
-                {projectStatuses.map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="wide">
-              <label htmlFor="project-next-action">下一步动作</label>
-              <input
-                id="project-next-action"
-                value={nextAction}
-                onChange={(event) => setNextAction(event.target.value)}
-                placeholder="写下推进项目的最小可执行动作"
-              />
-            </div>
-            <div>
-              <label htmlFor="project-due-date">截止日期</label>
-              <input
-                id="project-due-date"
-                type="date"
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
-              />
-            </div>
-            <button type="submit">
-              <FolderGit2 size={16} />
-              保存项目
-            </button>
-          </div>
-          {error ? <p role="alert">{error}</p> : null}
-        </form>
 
         <div
           className="workbench-filter"
@@ -332,6 +382,8 @@ export function WorkbenchQuickRecord({
           )}
         </section>
       </aside>
+
+      {workbenchDialog}
     </div>
   )
 }

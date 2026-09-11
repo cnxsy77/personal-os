@@ -158,6 +158,8 @@ export default function App({ data = defaultData }: AppProps) {
                 openQuickRecord('finance', 'transaction')
               } else if (active === '学习') {
                 openQuickRecord('learning', 'log')
+              } else if (active === '工作台') {
+                openQuickRecord('workbench', 'project')
               } else {
                 data.addQuickTask('新建待办事项')
               }
@@ -223,6 +225,11 @@ export default function App({ data = defaultData }: AppProps) {
         ) : active === '工作台' ? (
           <WorkbenchQuickRecord
             projects={state.projects}
+            dialogOpen={quickRecord?.domain === 'workbench'}
+            dialogTab={quickRecord?.tab ?? 'project'}
+            onDialogOpen={(tab) => openQuickRecord('workbench', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
             onProjectSubmit={data.addProject}
             onProjectStatusChange={data.setProjectStatus}
           />
