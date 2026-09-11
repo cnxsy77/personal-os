@@ -69,6 +69,8 @@ describe('local Personal OS data', () => {
     expect(migrated.getSnapshot().learningPaths).toEqual([])
     expect(migrated.getSnapshot().learningResources).toEqual([])
     expect(migrated.getSnapshot().weeklyReviews).toEqual([])
+    expect(migrated.getSnapshot().workouts).toEqual([])
+    expect(migrated.getSnapshot().healthMetrics).toEqual([])
 
     migrated.recordStudyLog({
       topic: 'TypeScript 泛型',
@@ -199,6 +201,101 @@ describe('local Personal OS data', () => {
 
     expect(() => data.addLearningPath({ title: '  ', targetMinutes: 600 })).toThrow('学习路径名称不能为空')
     expect(() => data.addLearningPath({ title: '无效目标', targetMinutes: 0 })).toThrow('学习目标必须大于 0 分钟')
+    expect(data.getSnapshot()).toBe(before)
+  })
+
+  it('persists workouts and health metrics', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordWorkout({
+      date: '2026-09-11',
+      kind: 'push',
+      status: 'completed',
+      durationMinutes: 45,
+      notes: ' 主项卧推 ',
+    })
+    data.saveHealthMetric({
+      date: '2026-09-11',
+      sleepHours: 7.5,
+      weightKg: 72.4,
+      condition: 'good',
+    })
+
+    const reloaded = createLocalPersonalOSData({ storage })
+    const snapshot = reloaded.getSnapshot()
+
+    expect(snapshot.workouts[0]).toMatchObject({
+      date: '2026-09-11',
+      kind: 'push',
+      status: 'completed',
+      durationMinutes: 45,
+      notes: '主项卧推',
+    })
+    expect(snapshot.healthMetrics[0]).toMatchObject({
+      date: '2026-09-11',
+      sleepHours: 7.5,
+      weightKg: 72.4,
+      condition: 'good',
+    })
+  })
+
+  it('updates workout status and replaces a health metric on the same date', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordWorkout({
+      date: '2026-09-11',
+      kind: 'cardio',
+      status: 'planned',
+      durationMinutes: 30,
+      notes: '',
+    })
+    const workoutId = data.getSnapshot().workouts[0].id
+    data.setWorkoutStatus(workoutId, 'completed')
+
+    const metricInput = {
+      date: '2026-09-11',
+      sleepHours: 6,
+      weightKg: 72,
+      condition: 'fair',
+    } as const
+    data.saveHealthMetric(metricInput)
+    data.saveHealthMetric({
+      ...metricInput,
+      sleepHours: 8,
+      condition: 'great',
+    })
+
+    const snapshot = data.getSnapshot()
+    expect(snapshot.workouts[0]).toMatchObject({ id: workoutId, status: 'completed' })
+    expect(snapshot.healthMetrics).toHaveLength(1)
+    expect(snapshot.healthMetrics[0]).toMatchObject({
+      sleepHours: 8,
+      weightKg: 72,
+      condition: 'great',
+    })
+  })
+
+  it('rejects invalid health records without changing state', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+    const before = data.getSnapshot()
+
+    expect(() => data.recordWorkout({
+      date: '2026-09-11',
+      kind: 'push',
+      status: 'completed',
+      durationMinutes: -10,
+      notes: '',
+    })).toThrow('训练时长必须在 0 到 600 分钟之间')
+    expect(() => data.saveHealthMetric({
+      date: '2026-09-11',
+      sleepHours: 25,
+      weightKg: null,
+      condition: 'good',
+    })).toThrow('睡眠时长必须在 0 到 24 小时之间')
+
     expect(data.getSnapshot()).toBe(before)
   })
 })

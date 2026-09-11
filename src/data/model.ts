@@ -59,6 +59,33 @@ export type WeeklyReview = {
 
 export type WeeklyReviewInput = Omit<WeeklyReview, 'id'>
 
+export type WorkoutKind = 'push' | 'pull' | 'legs' | 'cardio' | 'rest'
+
+export type WorkoutStatus = 'planned' | 'completed' | 'skipped'
+
+export type Workout = {
+  id: string
+  date: string
+  kind: WorkoutKind
+  status: WorkoutStatus
+  durationMinutes: number
+  notes: string
+}
+
+export type WorkoutInput = Omit<Workout, 'id'>
+
+export type HealthCondition = 'great' | 'good' | 'fair' | 'tired'
+
+export type HealthMetric = {
+  id: string
+  date: string
+  sleepHours: number
+  weightKg: number | null
+  condition: HealthCondition
+}
+
+export type HealthMetricInput = Omit<HealthMetric, 'id'>
+
 export type PersonalOSState = {
   tasks: Task[]
   transactions: Transaction[]
@@ -67,6 +94,8 @@ export type PersonalOSState = {
   learningPaths: LearningPath[]
   learningResources: LearningResource[]
   weeklyReviews: WeeklyReview[]
+  workouts: Workout[]
+  healthMetrics: HealthMetric[]
 }
 
 export type PersonalOSData = {
@@ -81,4 +110,7 @@ export type PersonalOSData = {
   addLearningResource: (input: LearningResourceInput) => void
   setLearningResourceStatus: (id: string, status: LearningResourceStatus) => void
   saveWeeklyReview: (input: WeeklyReviewInput) => void
+  recordWorkout: (input: WorkoutInput) => void
+  setWorkoutStatus: (id: string, status: WorkoutStatus) => void
+  saveHealthMetric: (input: HealthMetricInput) => void
 }

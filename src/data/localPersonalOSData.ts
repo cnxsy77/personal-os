@@ -1,4 +1,7 @@
 import type {
+  HealthCondition,
+  HealthMetric,
+  HealthMetricInput,
   LearningPath,
   LearningPathInput,
   LearningResource,
@@ -13,6 +16,10 @@ import type {
   Task,
   WeeklyReview,
   WeeklyReviewInput,
+  Workout,
+  WorkoutInput,
+  WorkoutKind,
+  WorkoutStatus,
 } from './model'
 
 const storageKey = 'personal-os:v1'
@@ -170,6 +177,103 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function recordWorkout(input: WorkoutInput) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+      throw new Error('请选择有效的训练日期')
+    }
+
+    if (!isWorkoutKind(input.kind)) {
+      throw new Error('请选择有效的训练类型')
+    }
+
+    if (!isWorkoutStatus(input.status)) {
+      throw new Error('请选择有效的训练状态')
+    }
+
+    if (
+      !Number.isInteger(input.durationMinutes) ||
+      input.durationMinutes < 0 ||
+      input.durationMinutes > 600
+    ) {
+      throw new Error('训练时长必须在 0 到 600 分钟之间')
+    }
+
+    const workout: Workout = {
+      ...input,
+      id: createId(),
+      notes: input.notes.trim(),
+    }
+
+    commit({
+      ...state,
+      workouts: [workout, ...state.workouts],
+    })
+  }
+
+  function setWorkoutStatus(id: string, status: WorkoutStatus) {
+    const exists = state.workouts.some((workout) => workout.id === id)
+
+    if (!exists) {
+      throw new Error('训练记录不存在')
+    }
+
+    commit({
+      ...state,
+      workouts: state.workouts.map((workout) =>
+        workout.id === id ? { ...workout, status } : workout,
+      ),
+    })
+  }
+
+  function saveHealthMetric(input: HealthMetricInput) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+      throw new Error('请选择有效的记录日期')
+    }
+
+    if (
+      !Number.isFinite(input.sleepHours) ||
+      input.sleepHours < 0 ||
+      input.sleepHours > 24
+    ) {
+      throw new Error('睡眠时长必须在 0 到 24 小时之间')
+    }
+
+    if (
+      input.weightKg !== null &&
+      (!Number.isFinite(input.weightKg) || input.weightKg < 20 || input.weightKg > 300)
+    ) {
+      throw new Error('体重必须在 20 到 300 公斤之间')
+    }
+
+    if (!isHealthCondition(input.condition)) {
+      throw new Error('请选择有效的身体状态')
+    }
+
+    const metric: HealthMetric = {
+      id: createId(),
+      date: input.date,
+      sleepHours: Math.round(input.sleepHours * 10) / 10,
+      weightKg:
+        input.weightKg === null
+          ? null
+          : Math.round(input.weightKg * 10) / 10,
+      condition: input.condition,
+    }
+    const existingIndex = state.healthMetrics.findIndex(
+      (item) => item.date === metric.date,
+    )
+
+    commit({
+      ...state,
+      healthMetrics:
+        existingIndex >= 0
+          ? state.healthMetrics.map((item, index) =>
+              index === existingIndex ? metric : item,
+            )
+          : [metric, ...state.healthMetrics],
+    })
+  }
+
   return {
     subscribe,
     getSnapshot,
@@ -182,6 +286,9 @@ export function createLocalPersonalOSData(
     addLearningResource,
     setLearningResourceStatus,
     saveWeeklyReview,
+    recordWorkout,
+    setWorkoutStatus,
+    saveHealthMetric,
   }
 }
 
@@ -243,6 +350,8 @@ function createSeedState(now: Date): PersonalOSState {
       },
     ],
     weeklyReviews: [],
+    workouts: [],
+    healthMetrics: [],
   }
 }
 
@@ -290,6 +399,12 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
       : [],
     weeklyReviews: Array.isArray(value.weeklyReviews)
       ? value.weeklyReviews.filter(isWeeklyReview)
+      : [],
+    workouts: Array.isArray(value.workouts)
+      ? value.workouts.filter(isWorkout)
+      : [],
+    healthMetrics: Array.isArray(value.healthMetrics)
+      ? value.healthMetrics.filter(isHealthMetric)
       : [],
   }
 }
@@ -392,6 +507,70 @@ function isWeeklyReview(value: unknown): value is WeeklyReview {
     typeof value.wins === 'string' &&
     typeof value.blockers === 'string' &&
     typeof value.nextFocus === 'string'
+  )
+}
+
+function isWorkout(value: unknown): value is Workout {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.date === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value.date) &&
+    isWorkoutKind(value.kind) &&
+    isWorkoutStatus(value.status) &&
+    typeof value.durationMinutes === 'number' &&
+    Number.isInteger(value.durationMinutes) &&
+    value.durationMinutes >= 0 &&
+    value.durationMinutes <= 600 &&
+    typeof value.notes === 'string'
+  )
+}
+
+function isWorkoutKind(value: unknown): value is WorkoutKind {
+  return (
+    value === 'push' ||
+    value === 'pull' ||
+    value === 'legs' ||
+    value === 'cardio' ||
+    value === 'rest'
+  )
+}
+
+function isWorkoutStatus(value: unknown): value is WorkoutStatus {
+  return value === 'planned' || value === 'completed' || value === 'skipped'
+}
+
+function isHealthMetric(value: unknown): value is HealthMetric {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.date === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value.date) &&
+    typeof value.sleepHours === 'number' &&
+    Number.isFinite(value.sleepHours) &&
+    value.sleepHours >= 0 &&
+    value.sleepHours <= 24 &&
+    (value.weightKg === null ||
+      (typeof value.weightKg === 'number' &&
+        Number.isFinite(value.weightKg) &&
+        value.weightKg >= 20 &&
+        value.weightKg <= 300)) &&
+    isHealthCondition(value.condition)
+  )
+}
+
+function isHealthCondition(value: unknown): value is HealthCondition {
+  return (
+    value === 'great' ||
+    value === 'good' ||
+    value === 'fair' ||
+    value === 'tired'
   )
 }
 

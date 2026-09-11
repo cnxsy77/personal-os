@@ -15,7 +15,14 @@ import { createLocalPersonalOSData } from './data/localPersonalOSData'
 import type { PersonalOSData, Transaction } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
+import { HealthQuickRecord } from './features/HealthQuickRecord'
 import { LearningQuickRecord } from './features/LearningQuickRecord'
+import {
+  getCompletedWorkoutsThisWeek,
+  getLatestHealthMetric,
+  weeklyWorkoutTarget,
+  workoutKindLabels,
+} from './utils/health'
 import {
   formatStudyDuration,
   getRecentStudyMinutes,
@@ -50,6 +57,15 @@ export default function App({ data = defaultData }: AppProps) {
   const now = new Date()
   const todayStudyMinutes = getStudyMinutesOnDate(state.studyLogs, toDateKey(now))
   const weekStudyMinutes = getRecentStudyMinutes(state.studyLogs, now)
+  const weeklyCompletedWorkouts = getCompletedWorkoutsThisWeek(state.workouts, now)
+  const latestCompletedWorkout = weeklyCompletedWorkouts[0]
+  const latestHealthMetric = getLatestHealthMetric(state.healthMetrics)
+  const healthTitle = latestCompletedWorkout
+    ? `${workoutKindLabels[latestCompletedWorkout.kind]}训练`
+    : '暂无训练'
+  const healthText = `本周 ${weeklyCompletedWorkouts.length} / ${weeklyWorkoutTarget} 次${
+    latestHealthMetric ? ` · 睡眠 ${latestHealthMetric.sleepHours} 小时` : ''
+  }`
 
   function selectPage(name: string) {
     setActive(name)
@@ -121,6 +137,14 @@ export default function App({ data = defaultData }: AppProps) {
             onResourceStatusChange={data.setLearningResourceStatus}
             onReviewSubmit={data.saveWeeklyReview}
           />
+        ) : active === '健康' ? (
+          <HealthQuickRecord
+            workouts={state.workouts}
+            healthMetrics={state.healthMetrics}
+            onWorkoutSubmit={data.recordWorkout}
+            onWorkoutStatusChange={data.setWorkoutStatus}
+            onMetricSubmit={data.saveHealthMetric}
+          />
         ) : (
           <>
             <section className="focus">
@@ -175,7 +199,12 @@ export default function App({ data = defaultData }: AppProps) {
               </div>
             </div>
             <div className="cards">
-              <Card icon={<Dumbbell />} name="健康" title="今晚训练：推" text="本周 2 / 4 次" />
+              <Card
+                icon={<Dumbbell />}
+                name="健康"
+                title={healthTitle}
+                text={healthText}
+              />
               <Card
                 icon={<Wallet />}
                 name="财务"
