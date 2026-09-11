@@ -154,6 +154,8 @@ export default function App({ data = defaultData }: AppProps) {
                 openQuickRecord('plan', 'task')
               } else if (active === '健康') {
                 openQuickRecord('health', 'workout')
+              } else if (active === '财务') {
+                openQuickRecord('finance', 'transaction')
               } else {
                 data.addQuickTask('新建待办事项')
               }
@@ -178,6 +180,11 @@ export default function App({ data = defaultData }: AppProps) {
           <FinanceQuickRecord
             monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
+            dialogOpen={quickRecord?.domain === 'finance'}
+            dialogTab={quickRecord?.tab ?? 'transaction'}
+            onDialogOpen={(tab) => openQuickRecord('finance', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
             onSubmit={data.recordTransaction}
             onBudgetSubmit={data.updateMonthlyBudget}
           />

@@ -77,6 +77,19 @@ label {
   cursor: pointer;
 }
 
+.finance-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .finance-page {
+    grid-template-columns: 1fr;
+  }
+}
+
 h1 {
   font-size: 35px;
   margin: 10px 0 0;

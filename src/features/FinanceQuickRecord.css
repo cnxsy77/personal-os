@@ -5,6 +5,19 @@
   padding: 22px;
 }
 
+.budget-side p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  color: #93a095;
+  font-size: 13px;
+}
+
+.budget-side svg {
+  color: #d8fa71;
+}
+
 .finance-panel h2 {
   margin: 0 0 18px;
   font-size: 20px;
@@ -102,6 +115,38 @@
   color: #182118;
   font-weight: 700;
   cursor: pointer;
+}
+
+.record-dialog .finance-form {
+  padding: 22px;
+}
+
+.record-dialog .finance-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.record-dialog .finance-fields button {
+  grid-column: 1 / -1;
+  min-height: 47px;
+}
+
+.record-dialog .budget-form {
+  grid-template-columns: 1fr;
+  padding: 22px;
+}
+
+.record-dialog .budget-form input {
+  min-height: 47px;
+  font-size: 15px;
+}
+
+.record-dialog .budget-form button {
+  min-height: 47px;
+  font-size: 14px;
+}
+
+.record-dialog .budget-form [role='alert'] {
+  margin: 0;
 }
 
 .finance-form p[role='alert'] {
