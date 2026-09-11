@@ -34,7 +34,8 @@ describe('finance quick capture', () => {
     expect(records).toHaveTextContent('-¥12.50')
 
     await user.click(screen.getByRole('button', { name: '概览' }))
-    expect(screen.getByText('¥48.50')).toBeInTheDocument()
+    expect(screen.getByText('¥951.50')).toBeInTheDocument()
+    expect(screen.getByLabelText('财务进度')).toHaveTextContent('5% 已使用')
 
     const snapshot = data.getSnapshot()
     const expenseTotal = snapshot.transactions

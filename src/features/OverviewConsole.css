@@ -1,0 +1,521 @@
+.overview-console {
+  display: grid;
+  gap: 18px;
+  margin-top: 30px;
+}
+
+.overview-kpis,
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overview-panel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #324138;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #1d2721, #17201b);
+}
+
+.overview-panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.overview-panel-heading h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.5px;
+}
+
+.overview-panel-heading span {
+  flex: 0 0 auto;
+  color: #93a095;
+  font-size: 13px;
+}
+
+.overview-kpi,
+.domain-progress-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #303c34;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #212b24, #18201c);
+}
+
+.overview-kpi label,
+.domain-progress-card p {
+  margin: 0;
+  color: #93a095;
+  font-size: 13px;
+}
+
+.overview-kpi strong,
+.domain-progress-card strong {
+  display: block;
+  margin-top: 10px;
+  color: #f3f8f2;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+}
+
+.overview-kpi span {
+  display: block;
+  margin-top: 8px;
+  color: #a3afa5;
+  font-size: 13px;
+}
+
+.domain-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.domain-title b {
+  color: #d8fa71;
+  font-size: 16px;
+}
+
+.domain-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.domain-chip.health,
+.overview-track .health {
+  color: #7ce6c5;
+  background: #16352e;
+}
+
+.domain-chip.finance,
+.overview-track .finance {
+  color: #ffc857;
+  background: #3d2f19;
+}
+
+.domain-chip.learning,
+.overview-track .learning {
+  color: #7dabff;
+  background: #1a2b42;
+}
+
+.domain-chip.work,
+.overview-track .work {
+  color: #d8fa71;
+  background: #2b3a1d;
+}
+
+.domain-progress-card p {
+  margin-top: 7px;
+}
+
+.overview-track {
+  height: 8px;
+  margin-top: 15px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #29352d;
+}
+
+.overview-track span {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: inherit;
+}
+
+.overview-track .health {
+  background: #5fd4c4;
+}
+
+.overview-track .finance {
+  background: #ffc857;
+}
+
+.overview-track .learning {
+  background: #62a9ff;
+}
+
+.overview-track .work {
+  background: #d8fa71;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.45fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.overview-side {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.overview-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  width: fit-content;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid #2c372f;
+  border-radius: 11px;
+  background: #141c17;
+}
+
+.overview-filters button {
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #95a29a;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.overview-filters button:hover,
+.overview-filters button.selected {
+  color: #d8fa71;
+  background: #283a29;
+}
+
+.record-table-wrap {
+  overflow-x: auto;
+}
+
+.record-table-wrap table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.record-table-wrap th {
+  padding: 0 12px 11px;
+  color: #8b978e;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.record-table-wrap td {
+  padding: 14px 12px;
+  border-top: 1px solid #27322a;
+  color: #c8d2c9;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.record-name {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.record-name b {
+  color: #eaf1ec;
+  overflow-wrap: anywhere;
+}
+
+.record-name svg {
+  flex: 0 0 auto;
+  color: #8f9b91;
+}
+
+.record-check {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #647166;
+  border-radius: 50%;
+  background: transparent;
+  color: #172017;
+  cursor: pointer;
+}
+
+.record-check[aria-pressed="true"] {
+  border-color: #d8fa71;
+  background: #d8fa71;
+}
+
+.record-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.record-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.record-status.neutral {
+  color: #9fb2a4;
+}
+
+.record-status.positive {
+  color: #75d99b;
+}
+
+.record-status.warning {
+  color: #ffc857;
+}
+
+.record-status.danger {
+  color: #ff7a70;
+}
+
+.priority-list,
+.decision-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.priority-list li,
+.decision-list li {
+  padding-top: 14px;
+  border-top: 1px solid #27322a;
+}
+
+.priority-list li:first-child,
+.decision-list li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.priority-list b,
+.decision-list b {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #eaf1ec;
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.priority-list p,
+.decision-list p {
+  margin: 6px 0 0 0;
+  color: #93a095;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.decision-list b svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #ffc857;
+}
+
+.decision-count {
+  color: #ffc857;
+  font-weight: 700;
+}
+
+.completion-panel {
+  text-align: center;
+}
+
+.completion-panel .overview-panel-heading {
+  text-align: left;
+}
+
+.completion-ring {
+  width: 128px;
+  height: 128px;
+  margin: 4px auto 0;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  background: conic-gradient(#d8fa71 144deg, #354537 0);
+  position: relative;
+}
+
+.completion-ring:before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: #1d2b21;
+}
+
+.completion-ring b,
+.completion-ring span {
+  position: relative;
+}
+
+.completion-ring b {
+  font-size: 22px;
+}
+
+.completion-ring span {
+  color: #a3afa5;
+  font-size: 12px;
+}
+
+.overview-empty {
+  margin: 0;
+  color: #93a095;
+  font-size: 14px;
+}
+
+@media (max-width: 1180px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .overview-kpis,
+  .progress-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview-side {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .overview-console {
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .overview-kpis,
+  .progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-panel {
+    padding: 20px;
+    border-radius: 14px;
+  }
+
+  .overview-panel-heading {
+    align-items: flex-start;
+  }
+
+  .overview-panel-heading h2 {
+    font-size: 20px;
+  }
+
+  .overview-kpi,
+  .domain-progress-card {
+    padding: 18px;
+  }
+
+  .overview-kpi strong,
+  .domain-progress-card strong {
+    font-size: 25px;
+  }
+
+  .record-table-wrap {
+    overflow: visible;
+  }
+
+  .record-table-wrap table,
+  .record-table-wrap tbody,
+  .record-table-wrap tr,
+  .record-table-wrap td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .record-table-wrap table {
+    min-width: 0;
+    table-layout: auto;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+  }
+
+  .record-table-wrap thead {
+    display: none;
+  }
+
+  .record-table-wrap tr {
+    padding: 17px;
+    border: 1px solid #303c34;
+    border-radius: 14px;
+    background: #18201c;
+  }
+
+  .record-table-wrap td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .record-table-wrap td + td {
+    margin-top: 12px;
+  }
+
+  .record-table-wrap td:first-child {
+    display: block;
+  }
+
+  .record-table-wrap td:nth-child(2)::before {
+    content: "领域";
+  }
+
+  .record-table-wrap td:nth-child(3)::before {
+    content: "关键数据";
+  }
+
+  .record-table-wrap td:nth-child(4)::before {
+    content: "时间";
+  }
+
+  .record-table-wrap td:nth-child(5)::before {
+    content: "状态";
+  }
+
+  .record-table-wrap td:not(:first-child)::before {
+    flex: 0 0 auto;
+    color: #8b978e;
+    font-size: 12px;
+  }
+
+  .record-status {
+    justify-content: flex-end;
+  }
+}
