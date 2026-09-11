@@ -1,7 +1,13 @@
 .learning-page {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.learning-side {
+  display: grid;
+  gap: 18px;
   align-items: start;
 }
 
@@ -20,7 +26,7 @@
 
 .learning-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 22px;
 }
@@ -32,6 +38,7 @@
 }
 
 .learning-summary label,
+.dialog-form label,
 .learning-fields label,
 .compact-form label,
 .resource-form label,
@@ -103,6 +110,40 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.record-dialog .learning-fields.with-path {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.record-dialog .learning-fields.with-path button {
+  grid-column: 1 / -1;
+  min-height: 47px;
+}
+
+.record-dialog .compact-form,
+.record-dialog .resource-form,
+.record-dialog .review-form {
+  grid-template-columns: 1fr;
+  padding: 22px;
+}
+
+.record-dialog .compact-form > :first-child,
+.record-dialog .review-form > :nth-child(4),
+.record-dialog .review-form button {
+  grid-column: auto;
+}
+
+.record-dialog .compact-form button,
+.record-dialog .resource-form button,
+.record-dialog .review-form button {
+  grid-column: 1 / -1;
+  min-height: 47px;
+  font-size: 14px;
+}
+
+.record-dialog .dialog-form [role='alert'] {
+  margin: 0;
 }
 
 .compact-form,
@@ -262,6 +303,10 @@
 @media (max-width: 980px) {
   .learning-page {
     grid-template-columns: 1fr;
+  }
+
+  .learning-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

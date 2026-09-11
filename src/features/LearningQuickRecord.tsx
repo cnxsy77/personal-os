@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { BookMarked, GraduationCap, NotebookPen, Timer } from 'lucide-react'
+import { BookMarked, GraduationCap, NotebookPen, Plus, Timer } from 'lucide-react'
+import { RecordDialog } from '../components/RecordDialog'
 import type {
   LearningPath,
   LearningPathInput,
@@ -25,6 +26,12 @@ type Props = {
   learningPaths: LearningPath[]
   learningResources: LearningResource[]
   weeklyReviews: WeeklyReview[]
+  dialogOpen: boolean
+  dialogTab?: string
+  dialogOnly?: boolean
+  onDialogOpen: (tab?: string) => void
+  onDialogClose: () => void
+  onSaved: (message: string) => void
   onSubmit: (input: StudyLogInput) => void
   onPathSubmit: (input: LearningPathInput) => void
   onResourceSubmit: (input: LearningResourceInput) => void
@@ -51,6 +58,12 @@ export function LearningQuickRecord({
   learningPaths,
   learningResources,
   weeklyReviews,
+  dialogOpen,
+  dialogTab = 'log',
+  dialogOnly = false,
+  onDialogOpen,
+  onDialogClose,
+  onSaved,
   onSubmit,
   onPathSubmit,
   onResourceSubmit,
@@ -78,6 +91,38 @@ export function LearningQuickRecord({
   const todayMinutes = getStudyMinutesOnDate(studyLogs, today)
   const weekMinutes = getRecentStudyMinutes(studyLogs, now)
   const pathTitles = new Map(learningPaths.map((path) => [path.id, path.title]))
+  const doingResources = learningResources.filter(
+    (resource) => resource.status === 'doing',
+  ).length
+  const pathProgress = learningPaths.length
+    ? Math.round(
+        (learningPaths.reduce((total, path) => {
+          const learnedMinutes = studyLogs
+            .filter((log) => log.pathId === path.id)
+            .reduce((sum, log) => sum + log.minutes, 0)
+
+          return total + Math.min(1, learnedMinutes / path.targetMinutes)
+        }, 0) /
+          learningPaths.length) *
+          100,
+      )
+    : 0
+
+  function openDialog(tab = dialogTab) {
+    setError('')
+    setPathError('')
+    setResourceError('')
+    setReviewError('')
+    onDialogOpen(tab)
+  }
+
+  function closeDialog() {
+    setError('')
+    setPathError('')
+    setResourceError('')
+    setReviewError('')
+    onDialogClose()
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -103,6 +148,8 @@ export function LearningQuickRecord({
     setTopic('')
     setMinutes('')
     setError('')
+    closeDialog()
+    onSaved('学习记录已保存')
   }
 
   function submitPath(event: FormEvent) {
@@ -127,6 +174,8 @@ export function LearningQuickRecord({
     setNewPathTitle('')
     setTargetMinutes('')
     setPathError('')
+    closeDialog()
+    onSaved('学习路径已创建')
   }
 
   function submitResource(event: FormEvent) {
@@ -147,6 +196,8 @@ export function LearningQuickRecord({
     setResourceTitle('')
     setResourcePathId('none')
     setResourceError('')
+    closeDialog()
+    onSaved('学习资料已保存')
   }
 
   function submitReview(event: FormEvent) {
@@ -175,24 +226,26 @@ export function LearningQuickRecord({
     setReviewBlockers('')
     setReviewNextFocus('')
     setReviewError('')
+    closeDialog()
+    onSaved('周复盘已保存')
   }
 
-  return (
-    <div className="learning-page">
-      <section className="learning-panel" aria-labelledby="learning-title">
-        <h2 id="learning-title">学习记录</h2>
-
-        <div className="learning-summary">
-          <div>
-            <label>今日学习</label>
-            <strong>{formatStudyDuration(todayMinutes)}</strong>
-          </div>
-          <div>
-            <label>近 7 天</label>
-            <strong>{formatStudyDuration(weekMinutes)}</strong>
-          </div>
-        </div>
-
+  const learningDialog = (
+    <RecordDialog
+      activeTab={dialogTab}
+      description="记录学习进展、资料和周复盘。"
+      onClose={closeDialog}
+      onTabChange={openDialog}
+      open={dialogOpen}
+      tabs={[
+        { id: 'log', label: '学习记录' },
+        { id: 'path', label: '学习路径' },
+        { id: 'resource', label: '学习资料' },
+        { id: 'review', label: '周复盘' },
+      ]}
+      title="添加学习记录"
+    >
+      {dialogTab === 'log' ? (
         <form onSubmit={submit} className="learning-form">
           <div className="learning-fields with-path">
             <div>
@@ -230,40 +283,16 @@ export function LearningQuickRecord({
                 placeholder="45"
               />
             </div>
-            <button type="submit">记录</button>
+            <button type="submit">
+              <GraduationCap size={16} />
+              记录
+            </button>
           </div>
 
           {error ? <p role="alert">{error}</p> : null}
         </form>
-
-        <div className="learning-list-heading">
-          <h3>最近学习</h3>
-        </div>
-        <ul aria-label="学习记录">
-          {studyLogs.slice(0, 8).map((log) => (
-            <li key={log.id}>
-              <i>
-                <GraduationCap size={17} />
-              </i>
-              <div>
-                <h4>{log.topic}</h4>
-                <p>
-                  {formatDate(log.date)}
-                  {log.pathId ? ` · ${pathTitles.get(log.pathId) ?? '学习路径'}` : ' · 自由记录'}
-                </p>
-              </div>
-              <b>
-                <Timer size={14} />
-                {formatStudyDuration(log.minutes)}
-              </b>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="learning-panel" aria-labelledby="path-progress-title">
-        <h2 id="path-progress-title">路径进度</h2>
-        <form onSubmit={submitPath} className="compact-form">
+      ) : dialogTab === 'path' ? (
+        <form onSubmit={submitPath} className="compact-form dialog-form">
           <div>
             <label htmlFor="new-learning-path">新路径名称</label>
             <input
@@ -287,37 +316,10 @@ export function LearningQuickRecord({
             />
           </div>
           <button type="submit">创建路径</button>
+          {pathError ? <p role="alert">{pathError}</p> : null}
         </form>
-        {pathError ? <p role="alert">{pathError}</p> : null}
-
-        <ul className="path-list" aria-label="学习路径进度">
-          {learningPaths.map((path) => {
-            const learnedMinutes = studyLogs
-              .filter((log) => log.pathId === path.id)
-              .reduce((total, log) => total + log.minutes, 0)
-
-            return (
-              <li key={path.id}>
-                <div>
-                  <h3>{path.title}</h3>
-                  <p>
-                    {learnedMinutes} / {path.targetMinutes} 分钟
-                  </p>
-                </div>
-                <progress
-                  aria-label={`${path.title} 学习进度`}
-                  max={path.targetMinutes}
-                  value={learnedMinutes}
-                />
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-
-      <section className="learning-panel" aria-labelledby="resource-title">
-        <h2 id="resource-title">学习资料</h2>
-        <form onSubmit={submitResource} className="resource-form">
+      ) : dialogTab === 'resource' ? (
+        <form onSubmit={submitResource} className="resource-form dialog-form">
           <div>
             <label htmlFor="learning-resource-title">资料名称</label>
             <input
@@ -353,42 +355,10 @@ export function LearningQuickRecord({
             </select>
           </div>
           <button type="submit">添加资料</button>
+          {resourceError ? <p role="alert">{resourceError}</p> : null}
         </form>
-        {resourceError ? <p role="alert">{resourceError}</p> : null}
-
-        <ul className="resource-list" aria-label="学习资料">
-          {learningResources.map((resource) => (
-            <li key={resource.id}>
-              <i>
-                <BookMarked size={17} />
-              </i>
-              <div>
-                <h3>{resource.title}</h3>
-                <p>
-                  {resource.pathId ? pathTitles.get(resource.pathId) ?? '学习路径' : '独立资料'}
-                  {' · '}
-                  {resourceKinds.find((kind) => kind.value === resource.kind)?.label}
-                </p>
-              </div>
-              <select
-                aria-label={`${resource.title} 状态`}
-                value={resource.status}
-                onChange={(event) =>
-                  onResourceStatusChange(resource.id, event.target.value as LearningResourceStatus)
-                }
-              >
-                {resourceStatuses.map((status) => (
-                  <option key={status.value} value={status.value}>{status.label}</option>
-                ))}
-              </select>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="learning-panel" aria-labelledby="review-title">
-        <h2 id="review-title">周复盘</h2>
-        <form onSubmit={submitReview} className="review-form">
+      ) : (
+        <form onSubmit={submitReview} className="review-form dialog-form">
           <div>
             <label htmlFor="review-week">周开始日</label>
             <input
@@ -429,8 +399,139 @@ export function LearningQuickRecord({
             <NotebookPen size={15} />
             保存复盘
           </button>
+          {reviewError ? <p role="alert">{reviewError}</p> : null}
         </form>
-        {reviewError ? <p role="alert">{reviewError}</p> : null}
+      )}
+    </RecordDialog>
+  )
+
+  if (dialogOnly) {
+    return learningDialog
+  }
+
+  return (
+    <div className="learning-page">
+      <section className="learning-panel" aria-labelledby="learning-title">
+        <div className="panel-heading">
+          <h2 id="learning-title">学习脉搏</h2>
+          <button
+            className="page-add"
+            onClick={() => openDialog('log')}
+            type="button"
+          >
+            <Plus size={16} />
+            添加学习记录
+          </button>
+        </div>
+
+        <div className="learning-summary">
+          <div>
+            <label>今日学习</label>
+            <strong>{formatStudyDuration(todayMinutes)}</strong>
+          </div>
+          <div>
+            <label>近 7 天</label>
+            <strong>{formatStudyDuration(weekMinutes)}</strong>
+          </div>
+          <div>
+            <label>路径进度</label>
+            <strong>{pathProgress}%</strong>
+          </div>
+          <div>
+            <label>进行中资料</label>
+            <strong>{doingResources} 项</strong>
+          </div>
+        </div>
+
+        <div className="learning-list-heading">
+          <h3>最近学习</h3>
+        </div>
+        <ul aria-label="学习记录">
+          {studyLogs.slice(0, 8).map((log) => (
+            <li key={log.id}>
+              <i>
+                <GraduationCap size={17} />
+              </i>
+              <div>
+                <h4>{log.topic}</h4>
+                <p>
+                  {formatDate(log.date)}
+                  {log.pathId ? ` · ${pathTitles.get(log.pathId) ?? '学习路径'}` : ' · 自由记录'}
+                </p>
+              </div>
+              <b>
+                <Timer size={14} />
+                {formatStudyDuration(log.minutes)}
+              </b>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <div className="learning-side">
+        <section className="learning-panel" aria-labelledby="path-progress-title">
+          <h2 id="path-progress-title">路径进度</h2>
+
+        <ul className="path-list" aria-label="学习路径进度">
+          {learningPaths.map((path) => {
+            const learnedMinutes = studyLogs
+              .filter((log) => log.pathId === path.id)
+              .reduce((total, log) => total + log.minutes, 0)
+
+            return (
+              <li key={path.id}>
+                <div>
+                  <h3>{path.title}</h3>
+                  <p>
+                    {learnedMinutes} / {path.targetMinutes} 分钟
+                  </p>
+                </div>
+                <progress
+                  aria-label={`${path.title} 学习进度`}
+                  max={path.targetMinutes}
+                  value={learnedMinutes}
+                />
+              </li>
+            )
+          })}
+        </ul>
+        </section>
+
+      <section className="learning-panel" aria-labelledby="resource-title">
+        <h2 id="resource-title">学习资料</h2>
+
+        <ul className="resource-list" aria-label="学习资料">
+          {learningResources.map((resource) => (
+            <li key={resource.id}>
+              <i>
+                <BookMarked size={17} />
+              </i>
+              <div>
+                <h3>{resource.title}</h3>
+                <p>
+                  {resource.pathId ? pathTitles.get(resource.pathId) ?? '学习路径' : '独立资料'}
+                  {' · '}
+                  {resourceKinds.find((kind) => kind.value === resource.kind)?.label}
+                </p>
+              </div>
+              <select
+                aria-label={`${resource.title} 状态`}
+                value={resource.status}
+                onChange={(event) =>
+                  onResourceStatusChange(resource.id, event.target.value as LearningResourceStatus)
+                }
+              >
+                {resourceStatuses.map((status) => (
+                  <option key={status.value} value={status.value}>{status.label}</option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+        </section>
+
+      <section className="learning-panel" aria-labelledby="review-title">
+        <h2 id="review-title">周复盘</h2>
 
         <ul className="review-list" aria-label="周复盘记录">
           {weeklyReviews.slice(0, 6).map((review) => (
@@ -444,7 +545,10 @@ export function LearningQuickRecord({
             </li>
           ))}
         </ul>
-      </section>
+        </section>
+      </div>
+
+      {learningDialog}
     </div>
   )
 }

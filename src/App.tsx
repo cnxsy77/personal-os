@@ -156,6 +156,8 @@ export default function App({ data = defaultData }: AppProps) {
                 openQuickRecord('health', 'workout')
               } else if (active === '财务') {
                 openQuickRecord('finance', 'transaction')
+              } else if (active === '学习') {
+                openQuickRecord('learning', 'log')
               } else {
                 data.addQuickTask('新建待办事项')
               }
@@ -194,6 +196,11 @@ export default function App({ data = defaultData }: AppProps) {
             learningPaths={state.learningPaths}
             learningResources={state.learningResources}
             weeklyReviews={state.weeklyReviews}
+            dialogOpen={quickRecord?.domain === 'learning'}
+            dialogTab={quickRecord?.tab ?? 'log'}
+            onDialogOpen={(tab) => openQuickRecord('learning', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
             onSubmit={data.recordStudyLog}
             onPathSubmit={data.addLearningPath}
             onResourceSubmit={data.addLearningResource}
