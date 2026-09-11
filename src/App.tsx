@@ -15,6 +15,13 @@ import { createLocalPersonalOSData } from './data/localPersonalOSData'
 import type { PersonalOSData, Transaction } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
+import { LearningQuickRecord } from './features/LearningQuickRecord'
+import {
+  formatStudyDuration,
+  getRecentStudyMinutes,
+  getStudyMinutesOnDate,
+  toDateKey,
+} from './utils/study'
 import './App.css'
 
 const menu = [
@@ -39,6 +46,9 @@ export default function App({ data = defaultData }: AppProps) {
   const doneCount = state.tasks.filter((task) => task.done).length
   const todayExpense = sumTodayExpenses(state.transactions)
   const monthRecords = countMonthRecords(state.transactions)
+  const now = new Date()
+  const todayStudyMinutes = getStudyMinutesOnDate(state.studyLogs, toDateKey(now))
+  const weekStudyMinutes = getRecentStudyMinutes(state.studyLogs, now)
 
   function selectPage(name: string) {
     setActive(name)
@@ -95,6 +105,11 @@ export default function App({ data = defaultData }: AppProps) {
           <FinanceQuickRecord
             transactions={state.transactions}
             onSubmit={data.recordTransaction}
+          />
+        ) : active === '学习' ? (
+          <LearningQuickRecord
+            studyLogs={state.studyLogs}
+            onSubmit={data.recordStudyLog}
           />
         ) : (
           <>
@@ -157,7 +172,12 @@ export default function App({ data = defaultData }: AppProps) {
                 title={formatCents(todayExpense)}
                 text={`今日支出 · 本月 ${monthRecords} 笔`}
               />
-              <Card icon={<BookOpen />} name="学习" title="12.5 小时" text="本周学习 · 连续 6 天" />
+              <Card
+                icon={<BookOpen />}
+                name="学习"
+                title={formatStudyDuration(todayStudyMinutes)}
+                text={`今日学习 · 近 7 天 ${formatStudyDuration(weekStudyMinutes)}`}
+              />
               <Card icon={<HardDrive />} name="电脑" title="状态良好" text="可用空间 184 GB" />
             </div>
           </>
@@ -214,10 +234,4 @@ function formatToday() {
     day: 'numeric',
     weekday: 'long',
   }).format(new Date())
-}
-
-function toDateKey(value: Date) {
-  const month = String(value.getMonth() + 1).padStart(2, '0')
-  const day = String(value.getDate()).padStart(2, '0')
-  return `${value.getFullYear()}-${month}-${day}`
 }

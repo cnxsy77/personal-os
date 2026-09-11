@@ -1,0 +1,145 @@
+.learning-panel {
+  border: 1px solid #303c34;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #212b24, #18201c);
+  padding: 22px;
+}
+
+.learning-panel h2 {
+  margin: 0 0 18px;
+  font-size: 20px;
+  letter-spacing: -.5px;
+}
+
+.learning-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.learning-summary > div {
+  padding: 16px;
+  border-radius: 12px;
+  background: #ffffff0d;
+}
+
+.learning-summary label,
+.learning-fields label {
+  display: block;
+  letter-spacing: .1em;
+}
+
+.learning-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 21px;
+  letter-spacing: -.5px;
+}
+
+.learning-form {
+  padding: 18px;
+  border: 1px solid #3d4b41;
+  border-radius: 12px;
+  background: #17201b;
+}
+
+.learning-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.learning-fields input {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 7px;
+  padding: 0 11px;
+  border: 1px solid #3d4b41;
+  border-radius: 9px;
+  background: #111713;
+  color: #eaf0ea;
+  font: inherit;
+}
+
+.learning-fields button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  background: #d8fa71;
+  color: #182118;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.learning-form p[role='alert'] {
+  margin: 12px 0 0;
+  color: #ff9a8b;
+  font-size: 12px;
+}
+
+.learning-list-heading {
+  margin: 24px 0 10px;
+}
+
+.learning-list-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.learning-panel ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learning-panel li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 15px;
+  border: 1px solid #2b382f;
+  border-radius: 12px;
+  background: #19201c;
+}
+
+.learning-panel li i {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
+  background: #ffffff14;
+  color: #d8fa71;
+}
+
+.learning-panel li h4 {
+  margin: 0 0 3px;
+  font-size: 14px;
+}
+
+.learning-panel li p,
+.learning-panel li b {
+  margin: 0;
+  color: #93a095;
+  font-size: 12px;
+}
+
+.learning-panel li b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #eaf0ea;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .learning-fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,9 +1,11 @@
 import type {
   PersonalOSData,
   PersonalOSState,
-  Task,
+  StudyLog,
+  StudyLogInput,
   TransactionInput,
   Transaction,
+  Task,
 } from './model'
 
 const storageKey = 'personal-os:v1'
@@ -68,12 +70,21 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function recordStudyLog(input: StudyLogInput) {
+    const studyLog: StudyLog = { ...input, id: createId() }
+    commit({
+      ...state,
+      studyLogs: [studyLog, ...state.studyLogs],
+    })
+  }
+
   return {
     subscribe,
     getSnapshot,
     toggleTask,
     addQuickTask,
     recordTransaction,
+    recordStudyLog,
   }
 }
 
@@ -108,6 +119,14 @@ function createSeedState(now: Date): PersonalOSState {
         date: toDateKey(now),
       },
     ],
+    studyLogs: [
+      {
+        id: 'react-architecture',
+        topic: 'React 架构设计',
+        minutes: 45,
+        date: toDateKey(now),
+      },
+    ],
   }
 }
 
@@ -118,25 +137,30 @@ function loadState(storage: Storage, fallback: PersonalOSState): PersonalOSState
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<PersonalOSState>
-    if (isState(parsed)) {
-      return parsed
-    }
+    return normalizeState(JSON.parse(raw), fallback)
   } catch {
     return fallback
   }
-
-  return fallback
 }
 
-function isState(value: Partial<PersonalOSState> | null): value is PersonalOSState {
-  return Boolean(
-    value &&
-      Array.isArray(value.tasks) &&
-      Array.isArray(value.transactions) &&
-      value.tasks.every(isTask) &&
-      value.transactions.every(isTransaction),
-  )
+function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSState {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.tasks) ||
+    !Array.isArray(value.transactions) ||
+    !value.tasks.every(isTask) ||
+    !value.transactions.every(isTransaction)
+  ) {
+    return fallback
+  }
+
+  return {
+    tasks: value.tasks,
+    transactions: value.transactions,
+    studyLogs: Array.isArray(value.studyLogs)
+      ? value.studyLogs.filter(isStudyLog)
+      : [],
+  }
 }
 
 function isTask(value: unknown): value is Task {
@@ -164,6 +188,23 @@ function isTransaction(value: unknown): value is Transaction {
     Number.isInteger(value.amountCents) &&
     value.amountCents > 0 &&
     typeof value.category === 'string' &&
+    typeof value.date === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value.date)
+  )
+}
+
+function isStudyLog(value: unknown): value is StudyLog {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.topic === 'string' &&
+    value.topic.trim().length > 0 &&
+    typeof value.minutes === 'number' &&
+    Number.isInteger(value.minutes) &&
+    value.minutes > 0 &&
     typeof value.date === 'string' &&
     /^\d{4}-\d{2}-\d{2}$/.test(value.date)
   )
