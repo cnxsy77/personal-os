@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Activity, Dumbbell, HeartPulse, Timer } from 'lucide-react'
+import { Activity, Dumbbell, HeartPulse, Plus, Timer } from 'lucide-react'
+import { RecordDialog } from '../components/RecordDialog'
 import type {
   HealthCondition,
   HealthMetric,
@@ -23,6 +24,12 @@ import './HealthQuickRecord.css'
 type Props = {
   workouts: Workout[]
   healthMetrics: HealthMetric[]
+  dialogOpen: boolean
+  dialogTab?: string
+  dialogOnly?: boolean
+  onDialogOpen: (tab?: string) => void
+  onDialogClose: () => void
+  onSaved: (message: string) => void
   onWorkoutSubmit: (input: WorkoutInput) => void
   onWorkoutStatusChange: (id: string, status: WorkoutStatus) => void
   onMetricSubmit: (input: HealthMetricInput) => void
@@ -41,6 +48,12 @@ const healthConditions = Object.entries(healthConditionLabels) as Array<
 export function HealthQuickRecord({
   workouts,
   healthMetrics,
+  dialogOpen,
+  dialogTab = 'workout',
+  dialogOnly = false,
+  onDialogOpen,
+  onDialogClose,
+  onSaved,
   onWorkoutSubmit,
   onWorkoutStatusChange,
   onMetricSubmit,
@@ -65,6 +78,18 @@ export function HealthQuickRecord({
   )
   const latestMetric = getLatestHealthMetric(healthMetrics)
 
+  function openDialog(tab = dialogTab) {
+    setWorkoutError('')
+    setMetricError('')
+    onDialogOpen(tab)
+  }
+
+  function closeDialog() {
+    setWorkoutError('')
+    setMetricError('')
+    onDialogClose()
+  }
+
   function submitWorkout(event: FormEvent) {
     event.preventDefault()
     const normalizedDuration = Number(duration)
@@ -84,11 +109,13 @@ export function HealthQuickRecord({
       kind: workoutKind,
       status: workoutStatus,
       durationMinutes: normalizedDuration,
-      notes: notes,
+      notes,
     })
     setNotes('')
     setDuration('')
     setWorkoutError('')
+    closeDialog()
+    onSaved('训练已保存')
   }
 
   function submitMetric(event: FormEvent) {
@@ -124,39 +151,24 @@ export function HealthQuickRecord({
     setWeight('')
     setCondition('good')
     setMetricError('')
+    closeDialog()
+    onSaved('健康指标已保存')
   }
 
-  return (
-    <div className="health-page">
-      <section className="health-panel" aria-labelledby="health-title">
-        <h2 id="health-title">健康脉搏</h2>
-        <div className="health-summary">
-          <div>
-            <label>本周完成</label>
-            <strong>
-              {weeklyWorkouts.length} / {weeklyWorkoutTarget}
-            </strong>
-          </div>
-          <div>
-            <label>训练时长</label>
-            <strong>{formatStudyDuration(weeklyMinutes)}</strong>
-          </div>
-          <div>
-            <label>最近睡眠</label>
-            <strong>
-              {latestMetric ? `${latestMetric.sleepHours} 小时` : '未记录'}
-            </strong>
-          </div>
-          <div>
-            <label>最近体重</label>
-            <strong>
-              {latestMetric?.weightKg == null
-                ? '未记录'
-                : `${latestMetric.weightKg} kg`}
-            </strong>
-          </div>
-        </div>
-
+  const healthDialog = (
+    <RecordDialog
+      activeTab={dialogTab}
+      description="记录训练和身体状态。"
+      onClose={closeDialog}
+      onTabChange={openDialog}
+      open={dialogOpen}
+      tabs={[
+        { id: 'workout', label: '训练' },
+        { id: 'metric', label: '身体指标' },
+      ]}
+      title="添加健康记录"
+    >
+      {dialogTab === 'workout' ? (
         <form onSubmit={submitWorkout} className="health-form">
           <div className="health-fields">
             <div>
@@ -225,50 +237,7 @@ export function HealthQuickRecord({
           </div>
           {workoutError ? <p role="alert">{workoutError}</p> : null}
         </form>
-
-        <div className="health-list-heading">
-          <h3>训练记录</h3>
-        </div>
-        <ul aria-label="训练记录">
-          {workouts.slice(0, 8).map((workout) => (
-            <li key={workout.id}>
-              <i>
-                <Dumbbell size={17} />
-              </i>
-              <div>
-                <h4>{workoutKindLabels[workout.kind]}</h4>
-                <p>
-                  {formatDate(workout.date)}
-                  {workout.notes ? ` · ${workout.notes}` : ''}
-                </p>
-              </div>
-              <div className="workout-detail">
-                <b>
-                  <Timer size={14} />
-                  {formatStudyDuration(workout.durationMinutes)}
-                </b>
-                <select
-                  aria-label={`${formatDate(workout.date)} ${workoutKindLabels[workout.kind]} 状态`}
-                  value={workout.status}
-                  onChange={(event) =>
-                    onWorkoutStatusChange(
-                      workout.id,
-                      event.target.value as WorkoutStatus,
-                    )
-                  }
-                >
-                  {workoutStatuses.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="health-panel" aria-labelledby="metric-title">
-        <h2 id="metric-title">身体指标</h2>
+      ) : (
         <form onSubmit={submitMetric} className="metric-form">
           <div className="metric-fields">
             <div>
@@ -329,7 +298,97 @@ export function HealthQuickRecord({
           </div>
           {metricError ? <p role="alert">{metricError}</p> : null}
         </form>
+      )}
+    </RecordDialog>
+  )
 
+  if (dialogOnly) {
+    return healthDialog
+  }
+
+  return (
+    <div className="health-page">
+      <section className="health-panel" aria-labelledby="health-title">
+        <div className="panel-heading">
+          <h2 id="health-title">健康脉搏</h2>
+          <button className="page-add" onClick={() => openDialog('workout')} type="button">
+            <Plus size={16} />
+            添加记录
+          </button>
+        </div>
+
+        <div className="health-summary">
+          <div>
+            <label>本周完成</label>
+            <strong>
+              {weeklyWorkouts.length} / {weeklyWorkoutTarget}
+            </strong>
+          </div>
+          <div>
+            <label>训练时长</label>
+            <strong>{formatStudyDuration(weeklyMinutes)}</strong>
+          </div>
+          <div>
+            <label>最近睡眠</label>
+            <strong>
+              {latestMetric ? `${latestMetric.sleepHours} 小时` : '未记录'}
+            </strong>
+          </div>
+          <div>
+            <label>最近体重</label>
+            <strong>
+              {latestMetric?.weightKg == null
+                ? '未记录'
+                : `${latestMetric.weightKg} kg`}
+            </strong>
+          </div>
+        </div>
+
+        <div className="health-list-heading">
+          <h3>训练记录</h3>
+        </div>
+        <ul aria-label="训练记录">
+          {workouts.slice(0, 8).map((workout) => (
+            <li key={workout.id}>
+              <i>
+                <Dumbbell size={17} />
+              </i>
+              <div>
+                <h4>{workoutKindLabels[workout.kind]}</h4>
+                <p>
+                  {formatDate(workout.date)}
+                  {workout.notes ? ` · ${workout.notes}` : ''}
+                </p>
+              </div>
+              <div className="workout-detail">
+                <b>
+                  <Timer size={14} />
+                  {formatStudyDuration(workout.durationMinutes)}
+                </b>
+                <select
+                  aria-label={`${formatDate(workout.date)} ${workoutKindLabels[workout.kind]} 状态`}
+                  value={workout.status}
+                  onChange={(event) =>
+                    onWorkoutStatusChange(
+                      workout.id,
+                      event.target.value as WorkoutStatus,
+                    )
+                  }
+                >
+                  {workoutStatuses.map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="health-panel" aria-labelledby="metric-title">
+        <div className="panel-heading">
+          <h2 id="metric-title">身体指标</h2>
+        </div>
         <div className="health-list-heading">
           <h3>最近指标</h3>
         </div>
@@ -354,6 +413,8 @@ export function HealthQuickRecord({
             ))}
         </ul>
       </section>
+
+      {healthDialog}
     </div>
   )
 }

@@ -152,6 +152,8 @@ export default function App({ data = defaultData }: AppProps) {
             onClick={() => {
               if (active === '计划') {
                 openQuickRecord('plan', 'task')
+              } else if (active === '健康') {
+                openQuickRecord('health', 'workout')
               } else {
                 data.addQuickTask('新建待办事项')
               }
@@ -195,6 +197,11 @@ export default function App({ data = defaultData }: AppProps) {
           <HealthQuickRecord
             workouts={state.workouts}
             healthMetrics={state.healthMetrics}
+            dialogOpen={quickRecord?.domain === 'health'}
+            dialogTab={quickRecord?.tab ?? 'workout'}
+            onDialogOpen={(tab) => openQuickRecord('health', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
             onWorkoutSubmit={data.recordWorkout}
             onWorkoutStatusChange={data.setWorkoutStatus}
             onMetricSubmit={data.saveHealthMetric}

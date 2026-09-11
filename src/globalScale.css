@@ -47,6 +47,36 @@ label {
   font-size: 11.5px;
 }
 
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-heading h2 {
+  margin: 0;
+}
+
+.page-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 11px 17px;
+  border: 1px solid #d8fa71;
+  border-radius: 11px;
+  background: #d8fa71;
+  color: #182118;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 h1 {
   font-size: 35px;
   margin: 10px 0 0;

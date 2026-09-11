@@ -12,6 +12,7 @@ describe('health quick capture', () => {
     render(<App data={data} />)
 
     await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
     fireEvent.change(screen.getByLabelText('训练日期'), {
       target: { value: '2026-09-11' },
     })
@@ -20,6 +21,9 @@ describe('health quick capture', () => {
     await user.type(screen.getByLabelText('训练时长'), '45')
     await user.type(screen.getByLabelText('训练备注'), '主项卧推')
     await user.click(screen.getByRole('button', { name: '保存训练' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('训练已保存')).toBeInTheDocument()
 
     expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
       '主项卧推',
@@ -43,6 +47,8 @@ describe('health quick capture', () => {
     render(<App data={data} />)
 
     await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
+    await user.click(screen.getByRole('tab', { name: '身体指标' }))
     fireEvent.change(screen.getByLabelText('记录日期'), {
       target: { value: '2026-09-11' },
     })
@@ -55,6 +61,13 @@ describe('health quick capture', () => {
       '2026.09.11',
     )
 
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
+    await user.click(screen.getByRole('tab', { name: '身体指标' }))
+
+    expect(screen.getByRole('list', { name: '健康指标' })).toHaveTextContent(
+      '2026.09.11',
+    )
+
     await user.clear(screen.getByLabelText('睡眠时长'))
     await user.type(screen.getByLabelText('睡眠时长'), '8')
     await user.clear(screen.getByLabelText('体重'))
@@ -62,6 +75,8 @@ describe('health quick capture', () => {
     await user.selectOptions(screen.getByLabelText('身体状态'), 'great')
     await user.click(screen.getByRole('button', { name: '保存健康指标' }))
 
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('健康指标已保存')).toBeInTheDocument()
     expect(data.getSnapshot().healthMetrics).toHaveLength(1)
     expect(data.getSnapshot().healthMetrics[0]).toMatchObject({
       date: '2026-09-11',
@@ -69,5 +84,22 @@ describe('health quick capture', () => {
       weightKg: 72.2,
       condition: 'great',
     })
+  })
+
+  it('keeps the workout dialog open when duration is invalid', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
+    await user.type(screen.getByLabelText('训练时长'), '-1')
+    fireEvent.submit(
+      screen.getByLabelText('训练时长').closest('form') as HTMLFormElement,
+    )
+
+    expect(screen.getByRole('dialog', { name: '添加健康记录' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('请输入 0 以上的训练时长')
+    expect(data.getSnapshot().workouts).toHaveLength(0)
   })
 })

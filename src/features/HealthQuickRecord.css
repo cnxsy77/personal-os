@@ -45,6 +45,31 @@
   letter-spacing: -.5px;
 }
 
+.record-dialog .health-fields,
+.record-dialog .metric-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.record-dialog .health-fields > div:nth-child(5),
+.record-dialog .health-fields button,
+.record-dialog .metric-fields button {
+  grid-column: 1 / -1;
+}
+
+.record-dialog .health-fields input,
+.record-dialog .health-fields select,
+.record-dialog .metric-fields input,
+.record-dialog .metric-fields select {
+  min-height: 47px;
+  font-size: 15px;
+}
+
+.record-dialog .health-fields button,
+.record-dialog .metric-fields button {
+  min-height: 47px;
+  font-size: 14px;
+}
+
 .health-form,
 .metric-form {
   padding: 16px;
