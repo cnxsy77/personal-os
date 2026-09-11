@@ -1,4 +1,9 @@
 import type {
+  LearningPath,
+  LearningPathInput,
+  LearningResource,
+  LearningResourceInput,
+  LearningResourceStatus,
   PersonalOSData,
   PersonalOSState,
   StudyLog,
@@ -6,6 +11,8 @@ import type {
   TransactionInput,
   Transaction,
   Task,
+  WeeklyReview,
+  WeeklyReviewInput,
 } from './model'
 
 const storageKey = 'personal-os:v1'
@@ -89,6 +96,80 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function addLearningPath(input: LearningPathInput) {
+    const title = input.title.trim()
+
+    if (!title) {
+      throw new Error('学习路径名称不能为空')
+    }
+
+    if (!Number.isInteger(input.targetMinutes) || input.targetMinutes <= 0) {
+      throw new Error('学习目标必须大于 0 分钟')
+    }
+
+    commit({
+      ...state,
+      learningPaths: [
+        { id: createId(), ...input, title },
+        ...state.learningPaths,
+      ],
+    })
+  }
+
+  function addLearningResource(input: LearningResourceInput) {
+    const title = input.title.trim()
+
+    if (!title) {
+      throw new Error('资料名称不能为空')
+    }
+
+    commit({
+      ...state,
+      learningResources: [
+        { id: createId(), ...input, title },
+        ...state.learningResources,
+      ],
+    })
+  }
+
+  function setLearningResourceStatus(id: string, status: LearningResourceStatus) {
+    const exists = state.learningResources.some((resource) => resource.id === id)
+
+    if (!exists) {
+      throw new Error('学习资料不存在')
+    }
+
+    commit({
+      ...state,
+      learningResources: state.learningResources.map((resource) =>
+        resource.id === id ? { ...resource, status } : resource,
+      ),
+    })
+  }
+
+  function saveWeeklyReview(input: WeeklyReviewInput) {
+    const review: WeeklyReview = {
+      id: createId(),
+      weekStartDate: input.weekStartDate,
+      wins: input.wins.trim(),
+      blockers: input.blockers.trim(),
+      nextFocus: input.nextFocus.trim(),
+    }
+    const existingIndex = state.weeklyReviews.findIndex(
+      (item) => item.weekStartDate === review.weekStartDate,
+    )
+
+    commit({
+      ...state,
+      weeklyReviews:
+        existingIndex >= 0
+          ? state.weeklyReviews.map((item, index) =>
+              index === existingIndex ? review : item,
+            )
+          : [review, ...state.weeklyReviews],
+    })
+  }
+
   return {
     subscribe,
     getSnapshot,
@@ -97,6 +178,10 @@ export function createLocalPersonalOSData(
     recordTransaction,
     recordStudyLog,
     updateMonthlyBudget,
+    addLearningPath,
+    addLearningResource,
+    setLearningResourceStatus,
+    saveWeeklyReview,
   }
 }
 
@@ -132,14 +217,32 @@ function createSeedState(now: Date): PersonalOSState {
       },
     ],
     monthlyBudgetCents: 100000,
+    learningPaths: [
+      {
+        id: 'react-engineering-path',
+        title: 'React 工程化路径',
+        targetMinutes: 1200,
+      },
+    ],
     studyLogs: [
       {
         id: 'react-architecture',
         topic: 'React 架构设计',
         minutes: 45,
         date: toDateKey(now),
+        pathId: 'react-engineering-path',
       },
     ],
+    learningResources: [
+      {
+        id: 'react-docs',
+        pathId: 'react-engineering-path',
+        title: 'React 官方文档',
+        kind: 'docs',
+        status: 'doing',
+      },
+    ],
+    weeklyReviews: [],
   }
 }
 
@@ -178,6 +281,15 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
         : 100000,
     studyLogs: Array.isArray(value.studyLogs)
       ? value.studyLogs.filter(isStudyLog)
+      : [],
+    learningPaths: Array.isArray(value.learningPaths)
+      ? value.learningPaths.filter(isLearningPath)
+      : [],
+    learningResources: Array.isArray(value.learningResources)
+      ? value.learningResources.filter(isLearningResource)
+      : [],
+    weeklyReviews: Array.isArray(value.weeklyReviews)
+      ? value.weeklyReviews.filter(isWeeklyReview)
       : [],
   }
 }
@@ -225,7 +337,61 @@ function isStudyLog(value: unknown): value is StudyLog {
     Number.isInteger(value.minutes) &&
     value.minutes > 0 &&
     typeof value.date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(value.date)
+    /^\d{4}-\d{2}-\d{2}$/.test(value.date) &&
+    (value.pathId === undefined || typeof value.pathId === 'string')
+  )
+}
+
+function isLearningPath(value: unknown): value is LearningPath {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    value.title.trim().length > 0 &&
+    typeof value.targetMinutes === 'number' &&
+    Number.isInteger(value.targetMinutes) &&
+    value.targetMinutes > 0
+  )
+}
+
+function isLearningResource(value: unknown): value is LearningResource {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    (value.pathId === null || typeof value.pathId === 'string') &&
+    typeof value.title === 'string' &&
+    value.title.trim().length > 0 &&
+    isLearningResourceKind(value.kind) &&
+    isLearningResourceStatus(value.status)
+  )
+}
+
+function isLearningResourceKind(value: unknown): value is LearningResource['kind'] {
+  return value === 'course' || value === 'book' || value === 'article' || value === 'video' || value === 'docs'
+}
+
+function isLearningResourceStatus(value: unknown): value is LearningResource['status'] {
+  return value === 'todo' || value === 'doing' || value === 'done'
+}
+
+function isWeeklyReview(value: unknown): value is WeeklyReview {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.weekStartDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value.weekStartDate) &&
+    typeof value.wins === 'string' &&
+    typeof value.blockers === 'string' &&
+    typeof value.nextFocus === 'string'
   )
 }
 

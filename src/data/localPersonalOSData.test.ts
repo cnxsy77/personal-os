@@ -66,6 +66,9 @@ describe('local Personal OS data', () => {
 
     const migrated = createLocalPersonalOSData({ storage })
     expect(migrated.getSnapshot().studyLogs).toEqual([])
+    expect(migrated.getSnapshot().learningPaths).toEqual([])
+    expect(migrated.getSnapshot().learningResources).toEqual([])
+    expect(migrated.getSnapshot().weeklyReviews).toEqual([])
 
     migrated.recordStudyLog({
       topic: 'TypeScript 泛型',
@@ -122,6 +125,80 @@ describe('local Personal OS data', () => {
 
     expect(() => data.updateMonthlyBudget(0)).toThrow('月度预算必须是大于 0 的整数金额')
     expect(() => data.updateMonthlyBudget(12.5)).toThrow('月度预算必须是大于 0 的整数金额')
+    expect(data.getSnapshot()).toBe(before)
+  })
+
+  it('persists learning paths, resources, and weekly reviews', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.addLearningPath({
+      title: 'TypeScript 工程化路径',
+      targetMinutes: 900,
+    })
+    const pathId = data.getSnapshot().learningPaths[0].id
+
+    data.addLearningResource({
+      pathId,
+      title: 'TypeScript 手册',
+      kind: 'docs',
+      status: 'todo',
+    })
+    const resourceId = data.getSnapshot().learningResources[0].id
+    data.setLearningResourceStatus(resourceId, 'doing')
+
+    data.saveWeeklyReview({
+      weekStartDate: '2026-09-07',
+      wins: '完成了仪表盘',
+      blockers: '时间碎片化',
+      nextFocus: '补齐预算统计',
+    })
+
+    const reloaded = createLocalPersonalOSData({ storage })
+    const snapshot = reloaded.getSnapshot()
+
+    expect(snapshot.learningPaths[0]).toMatchObject({
+      title: 'TypeScript 工程化路径',
+      targetMinutes: 900,
+    })
+    expect(snapshot.learningResources[0]).toMatchObject({
+      pathId,
+      title: 'TypeScript 手册',
+      kind: 'docs',
+      status: 'doing',
+    })
+    expect(snapshot.weeklyReviews[0]).toMatchObject({
+      weekStartDate: '2026-09-07',
+      wins: '完成了仪表盘',
+      blockers: '时间碎片化',
+      nextFocus: '补齐预算统计',
+    })
+  })
+
+  it('replaces a weekly review when the same week is saved again', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+    const input = {
+      weekStartDate: '2026-09-07',
+      wins: '第一版',
+      blockers: '睡眠不足',
+      nextFocus: '训练记录',
+    }
+
+    data.saveWeeklyReview(input)
+    data.saveWeeklyReview({ ...input, wins: '完成预算和复盘' })
+
+    expect(data.getSnapshot().weeklyReviews).toHaveLength(1)
+    expect(data.getSnapshot().weeklyReviews[0].wins).toBe('完成预算和复盘')
+  })
+
+  it('rejects invalid learning paths without changing state', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+    const before = data.getSnapshot()
+
+    expect(() => data.addLearningPath({ title: '  ', targetMinutes: 600 })).toThrow('学习路径名称不能为空')
+    expect(() => data.addLearningPath({ title: '无效目标', targetMinutes: 0 })).toThrow('学习目标必须大于 0 分钟')
     expect(data.getSnapshot()).toBe(before)
   })
 })

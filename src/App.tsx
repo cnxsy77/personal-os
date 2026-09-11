@@ -112,7 +112,14 @@ export default function App({ data = defaultData }: AppProps) {
         ) : active === '学习' ? (
           <LearningQuickRecord
             studyLogs={state.studyLogs}
+            learningPaths={state.learningPaths}
+            learningResources={state.learningResources}
+            weeklyReviews={state.weeklyReviews}
             onSubmit={data.recordStudyLog}
+            onPathSubmit={data.addLearningPath}
+            onResourceSubmit={data.addLearningResource}
+            onResourceStatusChange={data.setLearningResourceStatus}
+            onReviewSubmit={data.saveWeeklyReview}
           />
         ) : (
           <>
