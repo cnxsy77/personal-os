@@ -1,0 +1,333 @@
+body {
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.content {
+  width: min(1360px, 100%);
+  padding: 46px clamp(20px, 4vw, 64px) 78px;
+}
+
+aside {
+  width: 262px;
+  padding: 34px 20px;
+}
+
+.brand {
+  gap: 12px;
+  padding: 0 12px 40px;
+}
+
+.brand b {
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+}
+
+.brand strong {
+  font-size: 18px;
+}
+
+nav {
+  gap: 6px;
+}
+
+nav button {
+  gap: 14px;
+  min-height: 46px;
+  padding: 13px 15px;
+  font-size: 15px;
+}
+
+aside small {
+  font-size: 12px;
+}
+
+label {
+  font-size: 11.5px;
+}
+
+h1 {
+  font-size: 35px;
+  margin: 10px 0 0;
+  letter-spacing: -1.2px;
+}
+
+.add,
+.heading button {
+  min-height: 42px;
+  padding: 11px 16px;
+  font-size: 14px;
+}
+
+.focus {
+  margin: 36px 0 46px;
+  padding: 38px 42px;
+}
+
+.focus h2 {
+  font-size: 31px;
+  margin: 12px 0;
+}
+
+.focus p,
+.tasks p,
+.card p {
+  font-size: 14px;
+}
+
+.score {
+  width: 126px;
+  height: 126px;
+  flex-basis: 126px;
+}
+
+.score b {
+  font-size: 21px;
+}
+
+.score span {
+  font-size: 11px;
+}
+
+.heading {
+  margin-bottom: 18px;
+}
+
+.heading h2 {
+  font-size: 23px;
+}
+
+.tasks {
+  gap: 10px;
+}
+
+.tasks article {
+  gap: 18px;
+  padding: 21px 24px;
+}
+
+.tasks h3 {
+  font-size: 16px;
+}
+
+.tasks em {
+  font-size: 12px;
+}
+
+.check {
+  width: 26px;
+  height: 26px;
+}
+
+.pulse {
+  margin-top: 48px;
+}
+
+.cards {
+  gap: 14px;
+}
+
+.card {
+  min-height: 214px;
+  padding: 26px;
+}
+
+.card i {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 20px;
+}
+
+.card i svg {
+  width: 22px;
+  height: 22px;
+}
+
+.card h3 {
+  font-size: 22px;
+  margin: 10px 0 8px;
+}
+
+.finance-panel,
+.learning-panel,
+.health-panel {
+  padding: 30px;
+}
+
+.finance-panel h2,
+.learning-panel h2,
+.health-panel h2 {
+  font-size: 24px;
+  margin-bottom: 24px;
+}
+
+.finance-summary > div,
+.learning-summary > div,
+.health-summary > div {
+  padding: 21px;
+}
+
+.finance-summary strong,
+.learning-summary strong,
+.health-summary strong {
+  font-size: 24px;
+}
+
+.finance-form,
+.budget-panel,
+.category-panel,
+.learning-form,
+.compact-form,
+.resource-form,
+.review-form,
+.health-form,
+.metric-form {
+  padding: 22px;
+}
+
+.finance-fields input,
+.finance-fields select,
+.budget-form input,
+.learning-fields input,
+.learning-fields select,
+.compact-form input,
+.resource-form input,
+.resource-form select,
+.review-form input,
+.health-fields input,
+.health-fields select,
+.metric-fields input,
+.metric-fields select {
+  min-height: 47px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+.finance-fields button,
+.budget-form button,
+.learning-fields button,
+.compact-form button,
+.resource-form button,
+.review-form button,
+.health-fields button,
+.metric-fields button {
+  min-height: 47px;
+  padding: 0 20px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+@media (min-width: 981px) {
+  .learning-page {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  }
+
+  .learning-page .learning-fields.with-path {
+    grid-template-columns: 116px 180px 72px auto;
+  }
+}
+
+.finance-panel li,
+.learning-panel li,
+.health-panel li {
+  padding: 18px 21px;
+}
+
+.finance-panel h4,
+.learning-panel h4,
+.health-panel h4,
+.path-list h3,
+.resource-list h3,
+.review-list h3 {
+  font-size: 17px;
+}
+
+.finance-panel p,
+.finance-panel b,
+.learning-panel p,
+.learning-panel b,
+.health-panel p,
+.health-panel b,
+.review-list small {
+  font-size: 14px;
+}
+
+.learning-list-heading h3,
+.finance-list-heading h3,
+.health-list-heading h3 {
+  font-size: 19px;
+}
+
+@media (max-width: 820px) {
+  .content {
+    padding: 36px 30px 66px;
+  }
+
+  aside {
+    width: 78px;
+    padding: 30px 12px;
+  }
+
+  .brand {
+    justify-content: center;
+    padding: 0 0 36px;
+  }
+
+  nav button {
+    justify-content: center;
+    padding: 13px;
+  }
+}
+
+@media (max-width: 560px) {
+  aside {
+    width: 238px;
+    padding: 30px 16px;
+  }
+
+  .brand {
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 12px 36px;
+  }
+
+  .brand strong,
+  nav span,
+  aside small {
+    display: inline;
+  }
+
+  nav button {
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 13px 15px;
+  }
+
+  .content {
+    padding: 28px 20px 58px;
+  }
+
+  h1 {
+    font-size: 29px;
+  }
+
+  .focus {
+    padding: 26px;
+  }
+
+  .focus h2 {
+    font-size: 26px;
+  }
+
+  .finance-panel,
+  .learning-panel,
+  .health-panel {
+    padding: 24px;
+  }
+
+  .card {
+    min-height: 188px;
+    padding: 23px;
+  }
+}

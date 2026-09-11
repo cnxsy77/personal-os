@@ -30,6 +30,7 @@ import {
   toDateKey,
 } from './utils/study'
 import './App.css'
+import './globalScale.css'
 
 const menu = [
   [LayoutDashboard, '概览'],
