@@ -102,11 +102,19 @@
 }
 
 .domain-choice {
+  display: flex;
+  align-items: center;
+  gap: 13px;
   place-items: stretch;
   min-height: 74px;
   padding: 14px 16px;
   text-align: left;
   font: inherit;
+}
+
+.domain-choice svg {
+  flex: 0 0 auto;
+  color: #d8fa71;
 }
 
 .domain-choice span {

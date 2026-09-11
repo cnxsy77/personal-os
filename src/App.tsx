@@ -14,6 +14,7 @@ import {
 import { createLocalPersonalOSData } from './data/localPersonalOSData'
 import type { PersonalOSData, Transaction } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
+import { RecordDialog } from './components/RecordDialog'
 import { Toast } from './components/Toast'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
 import { HealthQuickRecord } from './features/HealthQuickRecord'
@@ -44,6 +45,14 @@ const menu = [
   [FolderGit2, '工作台'],
 ] as const
 
+const domainChoices = [
+  [Target, 'plan', '计划', 'task'],
+  [Dumbbell, 'health', '健康', 'workout'],
+  [Wallet, 'finance', '财务', 'transaction'],
+  [BookOpen, 'learning', '学习', 'log'],
+  [FolderGit2, 'workbench', '工作台', 'project'],
+] as const
+
 const defaultData = createLocalPersonalOSData()
 
 type QuickRecordDomain = 'plan' | 'health' | 'finance' | 'learning' | 'workbench'
@@ -61,6 +70,7 @@ export default function App({ data = defaultData }: AppProps) {
   const [active, setActive] = useState('概览')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [quickRecord, setQuickRecord] = useState<QuickRecordTarget | null>(null)
+  const [domainPickerOpen, setDomainPickerOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const toastTimerRef = useRef<number | undefined>(undefined)
   const state = usePersonalOSData(data)
@@ -85,9 +95,14 @@ export default function App({ data = defaultData }: AppProps) {
     setQuickRecord(null)
   }, [])
 
+  const closeDomainPicker = useCallback(() => {
+    setDomainPickerOpen(false)
+  }, [])
+
   const openQuickRecord = useCallback(
     (domain: QuickRecordDomain, tab?: string) => {
       setQuickRecord({ domain, tab })
+      setDomainPickerOpen(false)
     },
     [],
   )
@@ -103,6 +118,7 @@ export default function App({ data = defaultData }: AppProps) {
   function selectPage(name: string) {
     setActive(name)
     setQuickRecord(null)
+    setDomainPickerOpen(false)
     setMobileOpen(false)
   }
 
@@ -150,7 +166,9 @@ export default function App({ data = defaultData }: AppProps) {
           <button
             className="add"
             onClick={() => {
-              if (active === '计划') {
+              if (active === '概览') {
+                setDomainPickerOpen(true)
+              } else if (active === '计划') {
                 openQuickRecord('plan', 'task')
               } else if (active === '健康') {
                 openQuickRecord('health', 'workout')
@@ -160,8 +178,6 @@ export default function App({ data = defaultData }: AppProps) {
                 openQuickRecord('learning', 'log')
               } else if (active === '工作台') {
                 openQuickRecord('workbench', 'project')
-              } else {
-                data.addQuickTask('新建待办事项')
               }
             }}
           >
@@ -309,6 +325,106 @@ export default function App({ data = defaultData }: AppProps) {
             </div>
           </>
         )}
+
+        {active === '概览' && quickRecord?.domain === 'plan' ? (
+          <PlanQuickRecord
+            tasks={state.tasks}
+            dialogOpen
+            dialogOnly
+            onDialogOpen={() => openQuickRecord('plan', 'task')}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
+            onTaskSubmit={data.addTask}
+            onTaskToggle={data.toggleTask}
+          />
+        ) : null}
+
+        {active === '概览' && quickRecord?.domain === 'health' ? (
+          <HealthQuickRecord
+            workouts={state.workouts}
+            healthMetrics={state.healthMetrics}
+            dialogOpen
+            dialogTab={quickRecord.tab ?? 'workout'}
+            dialogOnly
+            onDialogOpen={(tab) => openQuickRecord('health', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
+            onWorkoutSubmit={data.recordWorkout}
+            onWorkoutStatusChange={data.setWorkoutStatus}
+            onMetricSubmit={data.saveHealthMetric}
+          />
+        ) : null}
+
+        {active === '概览' && quickRecord?.domain === 'finance' ? (
+          <FinanceQuickRecord
+            monthlyBudgetCents={state.monthlyBudgetCents}
+            transactions={state.transactions}
+            dialogOpen
+            dialogTab={quickRecord.tab ?? 'transaction'}
+            dialogOnly
+            onDialogOpen={(tab) => openQuickRecord('finance', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
+            onSubmit={data.recordTransaction}
+            onBudgetSubmit={data.updateMonthlyBudget}
+          />
+        ) : null}
+
+        {active === '概览' && quickRecord?.domain === 'learning' ? (
+          <LearningQuickRecord
+            studyLogs={state.studyLogs}
+            learningPaths={state.learningPaths}
+            learningResources={state.learningResources}
+            weeklyReviews={state.weeklyReviews}
+            dialogOpen
+            dialogTab={quickRecord.tab ?? 'log'}
+            dialogOnly
+            onDialogOpen={(tab) => openQuickRecord('learning', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
+            onSubmit={data.recordStudyLog}
+            onPathSubmit={data.addLearningPath}
+            onResourceSubmit={data.addLearningResource}
+            onResourceStatusChange={data.setLearningResourceStatus}
+            onReviewSubmit={data.saveWeeklyReview}
+          />
+        ) : null}
+
+        {active === '概览' && quickRecord?.domain === 'workbench' ? (
+          <WorkbenchQuickRecord
+            projects={state.projects}
+            dialogOpen
+            dialogTab={quickRecord.tab ?? 'project'}
+            dialogOnly
+            onDialogOpen={(tab) => openQuickRecord('workbench', tab)}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
+            onProjectSubmit={data.addProject}
+            onProjectStatusChange={data.setProjectStatus}
+          />
+        ) : null}
+
+        <RecordDialog
+          description="选择要记录的内容领域。"
+          onClose={closeDomainPicker}
+          open={domainPickerOpen}
+          title="选择记录领域"
+        >
+          <div className="domain-choice-list">
+            {domainChoices.map(([Icon, domain, label, tab]) => (
+              <button
+                aria-label={`选择${label}`}
+                className="domain-choice"
+                key={domain}
+                onClick={() => openQuickRecord(domain, tab)}
+                type="button"
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </RecordDialog>
 
         {toastMessage ? <Toast message={toastMessage} /> : null}
       </section>

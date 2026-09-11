@@ -26,7 +26,20 @@ describe('Personal OS dashboard', () => {
 
     await user.click(screen.getByRole('button', { name: /快速记录/ }))
 
-    expect(screen.getByText('新建待办事项')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: '选择记录领域' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择计划' }))
+    await user.type(screen.getByLabelText('计划事项'), '同步个人记录')
+    await user.click(screen.getByRole('button', { name: '保存计划' }))
+
+    expect(
+      screen.queryByRole('dialog', { name: '选择记录领域' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('计划已保存')).toBeInTheDocument()
+    expect(screen.getByText('同步个人记录')).toBeInTheDocument()
     expect(screen.getByText('0/4')).toBeInTheDocument()
   })
 })
