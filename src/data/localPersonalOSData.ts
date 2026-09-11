@@ -1,0 +1,188 @@
+import type {
+  PersonalOSData,
+  PersonalOSState,
+  Task,
+  TransactionInput,
+  Transaction,
+} from './model'
+
+const storageKey = 'personal-os:v1'
+
+type LocalDataOptions = {
+  storage?: Storage
+  now?: () => Date
+  seed?: PersonalOSState
+}
+
+export function createLocalPersonalOSData(
+  options: LocalDataOptions = {},
+): PersonalOSData {
+  const storage = options.storage ?? window.localStorage
+  const now = options.now ?? (() => new Date())
+  const listeners = new Set<() => void>()
+  let state = loadState(storage, options.seed ?? createSeedState(now()))
+  let snapshot = state
+
+  function subscribe(listener: () => void) {
+    listeners.add(listener)
+    return () => {
+      listeners.delete(listener)
+    }
+  }
+
+  function getSnapshot() {
+    return snapshot
+  }
+
+  function commit(nextState: PersonalOSState) {
+    state = nextState
+    snapshot = nextState
+    storage.setItem(storageKey, JSON.stringify(nextState))
+    listeners.forEach((listener) => listener())
+  }
+
+  function toggleTask(id: string) {
+    commit({
+      ...state,
+      tasks: state.tasks.map((task) =>
+        task.id === id ? { ...task, done: !task.done } : task,
+      ),
+    })
+  }
+
+  function addQuickTask(title: string) {
+    const task: Task = {
+      id: createId(),
+      title,
+      meta: '工作 · 今天',
+      done: false,
+    }
+    commit({ ...state, tasks: [...state.tasks, task] })
+  }
+
+  function recordTransaction(input: TransactionInput) {
+    const transaction: Transaction = { ...input, id: createId() }
+    commit({
+      ...state,
+      transactions: [transaction, ...state.transactions],
+    })
+  }
+
+  return {
+    subscribe,
+    getSnapshot,
+    toggleTask,
+    addQuickTask,
+    recordTransaction,
+  }
+}
+
+function createSeedState(now: Date): PersonalOSState {
+  return {
+    tasks: [
+      {
+        id: 'dashboard-mvp',
+        title: '完成 Personal OS 仪表盘 MVP',
+        meta: '工作 · 09:30',
+        done: false,
+      },
+      {
+        id: 'push-day',
+        title: '力量训练：推（45 分钟）',
+        meta: '健康 · 18:30',
+        done: false,
+      },
+      {
+        id: 'react-study',
+        title: '学习 React 架构设计 45 分钟',
+        meta: '学习 · 20:30',
+        done: false,
+      },
+    ],
+    transactions: [
+      {
+        id: 'lunch',
+        kind: 'expense',
+        amountCents: 3600,
+        category: '餐饮',
+        date: toDateKey(now),
+      },
+    ],
+  }
+}
+
+function loadState(storage: Storage, fallback: PersonalOSState): PersonalOSState {
+  const raw = storage.getItem(storageKey)
+  if (!raw) {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersonalOSState>
+    if (isState(parsed)) {
+      return parsed
+    }
+  } catch {
+    return fallback
+  }
+
+  return fallback
+}
+
+function isState(value: Partial<PersonalOSState> | null): value is PersonalOSState {
+  return Boolean(
+    value &&
+      Array.isArray(value.tasks) &&
+      Array.isArray(value.transactions) &&
+      value.tasks.every(isTask) &&
+      value.transactions.every(isTransaction),
+  )
+}
+
+function isTask(value: unknown): value is Task {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.meta === 'string' &&
+    typeof value.done === 'boolean'
+  )
+}
+
+function isTransaction(value: unknown): value is Transaction {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    (value.kind === 'expense' || value.kind === 'income') &&
+    typeof value.amountCents === 'number' &&
+    Number.isInteger(value.amountCents) &&
+    value.amountCents > 0 &&
+    typeof value.category === 'string' &&
+    typeof value.date === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value.date)
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function createId() {
+  if ('randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+
+  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function toDateKey(value: Date) {
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${value.getFullYear()}-${month}-${day}`
+}
