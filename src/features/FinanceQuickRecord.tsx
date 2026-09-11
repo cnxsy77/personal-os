@@ -7,23 +7,57 @@ const expenseCategories = ['餐饮', '交通', '购物', '住房', '其他']
 const incomeCategories = ['工资', '奖金', '理财', '其他']
 
 type Props = {
+  monthlyBudgetCents: number
   transactions: Transaction[]
   onSubmit: (input: TransactionInput) => void
+  onBudgetSubmit: (monthlyBudgetCents: number) => void
 }
 
-export function FinanceQuickRecord({ transactions, onSubmit }: Props) {
+export function FinanceQuickRecord({
+  monthlyBudgetCents,
+  transactions,
+  onSubmit,
+  onBudgetSubmit,
+}: Props) {
   const [kind, setKind] = useState<TransactionKind>('expense')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('餐饮')
   const [error, setError] = useState('')
+  const [budgetDraft, setBudgetDraft] = useState(
+    String(monthlyBudgetCents / 100),
+  )
+  const [budgetError, setBudgetError] = useState('')
   const now = new Date()
   const today = toDateKey(now)
   const categories = kind === 'expense' ? expenseCategories : incomeCategories
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const monthTransactions = transactions.filter((item) =>
+    item.date.startsWith(monthPrefix),
+  )
+  const monthExpenseTotal = monthTransactions
+    .filter((item) => item.kind === 'expense')
+    .reduce((total, item) => total + item.amountCents, 0)
+  const monthIncomeTotal = monthTransactions
+    .filter((item) => item.kind === 'income')
+    .reduce((total, item) => total + item.amountCents, 0)
   const todayTotal = transactions
     .filter((item) => item.date === today && item.kind === 'expense')
     .reduce((total, item) => total + item.amountCents, 0)
   const monthCount = transactions.filter((item) => item.date.startsWith(monthPrefix)).length
+  const budgetRemaining = Math.max(0, monthlyBudgetCents - monthExpenseTotal)
+  const budgetUsedPercent = Math.min(
+    100,
+    Math.round((monthExpenseTotal / monthlyBudgetCents) * 100),
+  )
+  const categoryTotals = monthTransactions
+    .filter((item) => item.kind === 'expense')
+    .reduce<Record<string, number>>((totals, item) => {
+      totals[item.category] = (totals[item.category] ?? 0) + item.amountCents
+      return totals
+    }, {})
+  const sortedCategoryTotals = Object.entries(categoryTotals).sort(
+    ([, amountA], [, amountB]) => amountB - amountA,
+  )
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -39,6 +73,20 @@ export function FinanceQuickRecord({ transactions, onSubmit }: Props) {
     setError('')
   }
 
+  function submitBudget(event: FormEvent) {
+    event.preventDefault()
+    const cents = Math.round(Number(budgetDraft) * 100)
+
+    if (!Number.isInteger(cents) || cents <= 0) {
+      setBudgetError('请输入大于 0 的月度预算')
+      return
+    }
+
+    onBudgetSubmit(cents)
+    setBudgetDraft(String(cents / 100))
+    setBudgetError('')
+  }
+
   return (
     <section className="finance-panel" aria-labelledby="finance-title">
       <h2 id="finance-title">快速收支</h2>
@@ -46,6 +94,14 @@ export function FinanceQuickRecord({ transactions, onSubmit }: Props) {
         <div>
           <label>今日支出</label>
           <strong>{formatCents(todayTotal)}</strong>
+        </div>
+        <div>
+          <label>本月支出</label>
+          <strong>{formatCents(monthExpenseTotal)}</strong>
+        </div>
+        <div>
+          <label>本月收入</label>
+          <strong>{formatCents(monthIncomeTotal)}</strong>
         </div>
         <div>
           <label>本月记录</label>
@@ -112,10 +168,57 @@ export function FinanceQuickRecord({ transactions, onSubmit }: Props) {
         {error ? <p role="alert">{error}</p> : null}
       </form>
 
+      <section className="budget-panel" aria-labelledby="budget-title">
+        <h3 id="budget-title">月度预算</h3>
+        <div className="budget-status">
+          <div>
+            <label>剩余预算</label>
+            <strong>{formatCents(budgetRemaining)}</strong>
+          </div>
+          <div>
+            <label>已使用</label>
+            <strong>{budgetUsedPercent}%</strong>
+          </div>
+        </div>
+        <progress
+          aria-label="预算使用进度"
+          max={100}
+          value={budgetUsedPercent}
+        />
+        <form onSubmit={submitBudget} className="budget-form">
+          <div>
+            <label htmlFor="finance-budget">设置预算</label>
+            <input
+              id="finance-budget"
+              value={budgetDraft}
+              onChange={(event) => setBudgetDraft(event.target.value)}
+              inputMode="decimal"
+              type="number"
+              min="0.01"
+              step="0.01"
+            />
+          </div>
+          <button type="submit">更新</button>
+        </form>
+        {budgetError ? <p role="alert">{budgetError}</p> : null}
+      </section>
+
+      <section className="category-panel" aria-labelledby="category-title">
+        <h3 id="category-title">本月分类</h3>
+        <ul aria-label="本月分类统计">
+          {sortedCategoryTotals.map(([name, amountCents]) => (
+            <li key={name}>
+              <span>{name}</span>
+              <b>{formatCents(amountCents)}</b>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <div className="finance-list-heading">
         <h3>最近记录</h3>
       </div>
-      <ul>
+      <ul aria-label="最近收支">
         {transactions.slice(0, 8).map((item) => (
           <li key={item.id}>
             <i className={item.kind}>

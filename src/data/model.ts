@@ -30,6 +30,7 @@ export type PersonalOSState = {
   tasks: Task[]
   transactions: Transaction[]
   studyLogs: StudyLog[]
+  monthlyBudgetCents: number
 }
 
 export type PersonalOSData = {
@@ -39,4 +40,5 @@ export type PersonalOSData = {
   addQuickTask: (title: string) => void
   recordTransaction: (input: TransactionInput) => void
   recordStudyLog: (input: StudyLogInput) => void
+  updateMonthlyBudget: (monthlyBudgetCents: number) => void
 }

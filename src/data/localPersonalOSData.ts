@@ -78,6 +78,17 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function updateMonthlyBudget(monthlyBudgetCents: number) {
+    if (!Number.isInteger(monthlyBudgetCents) || monthlyBudgetCents <= 0) {
+      throw new Error('月度预算必须是大于 0 的整数金额')
+    }
+
+    commit({
+      ...state,
+      monthlyBudgetCents,
+    })
+  }
+
   return {
     subscribe,
     getSnapshot,
@@ -85,6 +96,7 @@ export function createLocalPersonalOSData(
     addQuickTask,
     recordTransaction,
     recordStudyLog,
+    updateMonthlyBudget,
   }
 }
 
@@ -119,6 +131,7 @@ function createSeedState(now: Date): PersonalOSState {
         date: toDateKey(now),
       },
     ],
+    monthlyBudgetCents: 100000,
     studyLogs: [
       {
         id: 'react-architecture',
@@ -157,6 +170,12 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
   return {
     tasks: value.tasks,
     transactions: value.transactions,
+    monthlyBudgetCents:
+      typeof value.monthlyBudgetCents === 'number' &&
+      Number.isInteger(value.monthlyBudgetCents) &&
+      value.monthlyBudgetCents > 0
+        ? value.monthlyBudgetCents
+        : 100000,
     studyLogs: Array.isArray(value.studyLogs)
       ? value.studyLogs.filter(isStudyLog)
       : [],

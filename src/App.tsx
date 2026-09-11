@@ -45,7 +45,8 @@ export default function App({ data = defaultData }: AppProps) {
   const state = usePersonalOSData(data)
   const doneCount = state.tasks.filter((task) => task.done).length
   const todayExpense = sumTodayExpenses(state.transactions)
-  const monthRecords = countMonthRecords(state.transactions)
+  const monthExpense = sumMonthExpenses(state.transactions)
+  const budgetRemaining = Math.max(0, state.monthlyBudgetCents - monthExpense)
   const now = new Date()
   const todayStudyMinutes = getStudyMinutesOnDate(state.studyLogs, toDateKey(now))
   const weekStudyMinutes = getRecentStudyMinutes(state.studyLogs, now)
@@ -103,8 +104,10 @@ export default function App({ data = defaultData }: AppProps) {
 
         {active === '财务' ? (
           <FinanceQuickRecord
+            monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
             onSubmit={data.recordTransaction}
+            onBudgetSubmit={data.updateMonthlyBudget}
           />
         ) : active === '学习' ? (
           <LearningQuickRecord
@@ -170,7 +173,7 @@ export default function App({ data = defaultData }: AppProps) {
                 icon={<Wallet />}
                 name="财务"
                 title={formatCents(todayExpense)}
-                text={`今日支出 · 本月 ${monthRecords} 笔`}
+                text={`今日支出 · 预算剩余 ${formatCents(budgetRemaining)}`}
               />
               <Card
                 icon={<BookOpen />}
@@ -216,11 +219,13 @@ function sumTodayExpenses(transactions: Transaction[]) {
     .reduce((total, item) => total + item.amountCents, 0)
 }
 
-function countMonthRecords(transactions: Transaction[]) {
+function sumMonthExpenses(transactions: Transaction[]) {
   const now = new Date()
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-  return transactions.filter((item) => item.date.startsWith(monthPrefix)).length
+  return transactions
+    .filter((item) => item.date.startsWith(monthPrefix) && item.kind === 'expense')
+    .reduce((total, item) => total + item.amountCents, 0)
 }
 
 function formatCents(cents: number) {

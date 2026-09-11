@@ -13,7 +13,7 @@
 
 .finance-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 22px;
 }
@@ -110,6 +110,128 @@
   font-size: 12px;
 }
 
+.budget-panel,
+.category-panel {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid #3d4b41;
+  border-radius: 12px;
+  background: #17201b;
+}
+
+.budget-panel h3,
+.category-panel h3 {
+  margin: 0 0 15px;
+  font-size: 16px;
+}
+
+.budget-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.budget-status label {
+  display: block;
+  letter-spacing: .1em;
+}
+
+.budget-status strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 19px;
+}
+
+.budget-panel progress {
+  width: 100%;
+  height: 8px;
+  margin: 15px 0 18px;
+  border: 0;
+  appearance: none;
+}
+
+.budget-panel progress::-webkit-progress-bar {
+  border-radius: 99px;
+  background: #2b382f;
+}
+
+.budget-panel progress::-webkit-progress-value {
+  border-radius: 99px;
+  background: #d8fa71;
+}
+
+.budget-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.budget-form label {
+  display: block;
+  letter-spacing: .1em;
+}
+
+.budget-form input {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 7px;
+  padding: 0 11px;
+  border: 1px solid #3d4b41;
+  border-radius: 9px;
+  background: #111713;
+  color: #eaf0ea;
+  font: inherit;
+}
+
+.budget-form button {
+  min-height: 38px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 9px;
+  background: #d8fa71;
+  color: #182118;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.budget-form p[role='alert'],
+.category-panel p[role='alert'] {
+  grid-column: 1 / -1;
+  margin: 12px 0 0;
+  color: #ff9a8b;
+  font-size: 12px;
+}
+
+.category-panel ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.category-panel li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid #2b382f;
+  border-radius: 9px;
+  background: #19201c;
+}
+
+.category-panel span {
+  color: #c6d1c7;
+  font-size: 13px;
+}
+
+.category-panel b {
+  color: #eaf0ea;
+  font-size: 13px;
+}
+
 .finance-list-heading {
   margin: 24px 0 10px;
 }
@@ -171,6 +293,14 @@
 
 @media (max-width: 640px) {
   .finance-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .budget-form {
     grid-template-columns: 1fr;
   }
 }
