@@ -32,6 +32,11 @@ export function RecordDialog({
   const descriptionId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<Element | null>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!open) {
@@ -46,7 +51,7 @@ export function RecordDialog({
     function handleKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
       }
     }
 
@@ -61,7 +66,7 @@ export function RecordDialog({
         trigger.focus({ preventScroll: true })
       }
     }
-  }, [open, onClose])
+  }, [open])
 
   function handleTabKey(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'Tab' || !panelRef.current) {

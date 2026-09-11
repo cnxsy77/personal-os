@@ -1,16 +1,22 @@
 import { useState, type FormEvent } from 'react'
 import {
   CalendarClock,
-  CalendarPlus,
   CalendarRange,
   Check,
+  Plus,
   Target,
 } from 'lucide-react'
+import { RecordDialog } from '../components/RecordDialog'
 import type { Task, TaskCategory, TaskInput } from '../data/model'
 import './PlanQuickRecord.css'
 
 type Props = {
   tasks: Task[]
+  dialogOpen: boolean
+  dialogOnly?: boolean
+  onDialogOpen: () => void
+  onDialogClose: () => void
+  onSaved: (message: string) => void
   onTaskSubmit: (input: TaskInput) => void
   onTaskToggle: (id: string) => void
 }
@@ -36,6 +42,11 @@ const rangeLabels: Record<PlanRange, string> = {
 
 export function PlanQuickRecord({
   tasks,
+  dialogOpen,
+  dialogOnly = false,
+  onDialogOpen,
+  onDialogClose,
+  onSaved,
   onTaskSubmit,
   onTaskToggle,
 }: Props) {
@@ -83,6 +94,16 @@ export function PlanQuickRecord({
   }))
   const distributionTotal = Math.max(1, tasks.length)
 
+  function openDialog() {
+    setError('')
+    onDialogOpen()
+  }
+
+  function closeDialog() {
+    setError('')
+    onDialogClose()
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault()
     const normalizedTitle = title.trim()
@@ -107,12 +128,83 @@ export function PlanQuickRecord({
     setTime('')
     setError('')
     setRange(date === today ? 'today' : 'all')
+    onDialogClose()
+    onSaved('计划已保存')
+  }
+
+  const taskDialog = (
+    <RecordDialog
+      activeTab="task"
+      description="记录下一步要完成的动作。"
+      onClose={closeDialog}
+      open={dialogOpen}
+      tabs={[{ id: 'task', label: '计划任务' }]}
+      title="添加计划"
+    >
+      <form onSubmit={submit} className="plan-form">
+        <div className="plan-fields">
+          <div className="plan-title-field">
+            <label htmlFor="plan-title-input">计划事项</label>
+            <input
+              id="plan-title-input"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="写下下一步要做的具体动作"
+            />
+          </div>
+          <div>
+            <label htmlFor="plan-date">计划日期</label>
+            <input
+              id="plan-date"
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="plan-category">计划分类</label>
+            <select
+              id="plan-category"
+              value={category}
+              onChange={(event) =>
+                setCategory(event.target.value as TaskCategory)
+              }
+            >
+              {taskCategories.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="plan-time">计划时间</label>
+            <input
+              id="plan-time"
+              type="time"
+              value={time}
+              onChange={(event) => setTime(event.target.value)}
+            />
+          </div>
+          <button type="submit">保存计划</button>
+        </div>
+        {error ? <p role="alert">{error}</p> : null}
+      </form>
+    </RecordDialog>
+  )
+
+  if (dialogOnly) {
+    return taskDialog
   }
 
   return (
     <div className="plan-page">
       <section className="plan-panel" aria-labelledby="plan-title">
-        <h2 id="plan-title">计划安排</h2>
+        <div className="panel-heading">
+          <h2 id="plan-title">计划安排</h2>
+          <button className="page-add" onClick={openDialog} type="button">
+            <Plus size={16} />
+            添加计划
+          </button>
+        </div>
 
         <div className="plan-summary">
           <div>
@@ -138,57 +230,6 @@ export function PlanQuickRecord({
             </strong>
           </div>
         </div>
-
-        <form onSubmit={submit} className="plan-form">
-          <div className="plan-fields">
-            <div className="plan-title-field">
-              <label htmlFor="plan-title-input">计划事项</label>
-              <input
-                id="plan-title-input"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="写下下一步要做的具体动作"
-              />
-            </div>
-            <div>
-              <label htmlFor="plan-date">计划日期</label>
-              <input
-                id="plan-date"
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="plan-category">计划分类</label>
-              <select
-                id="plan-category"
-                value={category}
-                onChange={(event) =>
-                  setCategory(event.target.value as TaskCategory)
-                }
-              >
-                {taskCategories.map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="plan-time">计划时间</label>
-              <input
-                id="plan-time"
-                type="time"
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-              />
-            </div>
-            <button type="submit">
-              <CalendarPlus size={16} />
-              保存计划
-            </button>
-          </div>
-          {error ? <p role="alert">{error}</p> : null}
-        </form>
 
         <div className="plan-filter" role="group" aria-label="计划范围">
           {(Object.keys(rangeLabels) as PlanRange[]).map((item) => (
@@ -294,6 +335,8 @@ export function PlanQuickRecord({
           )}
         </section>
       </aside>
+
+      {taskDialog}
     </div>
   )
 }

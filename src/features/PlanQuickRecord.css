@@ -12,10 +12,36 @@
   background: linear-gradient(145deg, #212b24, #18201c);
 }
 
-.plan-panel h2 {
-  margin: 0 0 20px;
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-heading h2 {
+  margin: 0;
   font-size: 21px;
   letter-spacing: -.5px;
+}
+
+.page-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 11px 17px;
+  border: 1px solid #d8fa71;
+  border-radius: 11px;
+  background: #d8fa71;
+  color: #182118;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .plan-summary {
@@ -92,6 +118,19 @@
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.record-dialog .plan-form {
+  padding: 22px;
+}
+
+.record-dialog .plan-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.record-dialog .plan-title-field,
+.record-dialog .plan-fields button {
+  grid-column: 1 / -1;
 }
 
 .plan-filter {

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   BookOpen,
   Check,
@@ -14,6 +14,7 @@ import {
 import { createLocalPersonalOSData } from './data/localPersonalOSData'
 import type { PersonalOSData, Transaction } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
+import { Toast } from './components/Toast'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
 import { HealthQuickRecord } from './features/HealthQuickRecord'
 import { LearningQuickRecord } from './features/LearningQuickRecord'
@@ -45,6 +46,13 @@ const menu = [
 
 const defaultData = createLocalPersonalOSData()
 
+type QuickRecordDomain = 'plan' | 'health' | 'finance' | 'learning' | 'workbench'
+
+type QuickRecordTarget = {
+  domain: QuickRecordDomain
+  tab?: string
+}
+
 type AppProps = {
   data?: PersonalOSData
 }
@@ -52,6 +60,9 @@ type AppProps = {
 export default function App({ data = defaultData }: AppProps) {
   const [active, setActive] = useState('概览')
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [quickRecord, setQuickRecord] = useState<QuickRecordTarget | null>(null)
+  const [toastMessage, setToastMessage] = useState('')
+  const toastTimerRef = useRef<number | undefined>(undefined)
   const state = usePersonalOSData(data)
   const doneCount = state.tasks.filter((task) => task.done).length
   const todayExpense = sumTodayExpenses(state.transactions)
@@ -70,10 +81,34 @@ export default function App({ data = defaultData }: AppProps) {
     latestHealthMetric ? ` · 睡眠 ${latestHealthMetric.sleepHours} 小时` : ''
   }`
 
+  const closeQuickRecord = useCallback(() => {
+    setQuickRecord(null)
+  }, [])
+
+  const openQuickRecord = useCallback(
+    (domain: QuickRecordDomain, tab?: string) => {
+      setQuickRecord({ domain, tab })
+    },
+    [],
+  )
+
+  const showSavedToast = useCallback((message: string) => {
+    window.clearTimeout(toastTimerRef.current)
+    setToastMessage(message)
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage('')
+    }, 3000)
+  }, [])
+
   function selectPage(name: string) {
     setActive(name)
+    setQuickRecord(null)
     setMobileOpen(false)
   }
+
+  useEffect(() => {
+    return () => window.clearTimeout(toastTimerRef.current)
+  }, [])
 
   return (
     <main className="app">
@@ -114,7 +149,13 @@ export default function App({ data = defaultData }: AppProps) {
           </div>
           <button
             className="add"
-            onClick={() => data.addQuickTask('新建待办事项')}
+            onClick={() => {
+              if (active === '计划') {
+                openQuickRecord('plan', 'task')
+              } else {
+                data.addQuickTask('新建待办事项')
+              }
+            }}
           >
             <Plus size={16} />
             快速记录
@@ -124,6 +165,10 @@ export default function App({ data = defaultData }: AppProps) {
         {active === '计划' ? (
           <PlanQuickRecord
             tasks={state.tasks}
+            dialogOpen={quickRecord?.domain === 'plan'}
+            onDialogOpen={() => openQuickRecord('plan', 'task')}
+            onDialogClose={closeQuickRecord}
+            onSaved={showSavedToast}
             onTaskSubmit={data.addTask}
             onTaskToggle={data.toggleTask}
           />
@@ -236,6 +281,8 @@ export default function App({ data = defaultData }: AppProps) {
             </div>
           </>
         )}
+
+        {toastMessage ? <Toast message={toastMessage} /> : null}
       </section>
     </main>
   )
