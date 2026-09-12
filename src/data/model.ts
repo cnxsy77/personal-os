@@ -30,7 +30,15 @@ export type Project = {
 
 export type ProjectInput = Omit<Project, 'id'>
 
-export type TransactionKind = 'expense' | 'income'
+export type TransactionKind = 'expense' | 'income' | 'transfer'
+
+export type TransactionTag = 'normal' | 'subscription' | 'refund'
+
+export type PaymentStage = 'deposit' | 'final' | 'full'
+
+export type BillSource = 'manual' | 'alipay' | 'wechat'
+
+export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly'
 
 export type Transaction = {
   id: string
@@ -38,9 +46,76 @@ export type Transaction = {
   amountCents: number
   category: string
   date: string
+  note?: string
+  tag?: TransactionTag
+  orderId?: string
+  stage?: PaymentStage
+  recurringId?: string
+  relatedTransactionId?: string
+  counterparty?: string
+  source?: BillSource
+  sourceTradeNo?: string
+  occurredAt?: string
+  importId?: string
 }
 
-export type TransactionInput = Omit<Transaction, 'id'>
+export type NewPaymentOrderInput = {
+  name: string
+  expectedTotalCents: number
+}
+
+export type TransactionInput = Omit<Transaction, 'id'> & {
+  newOrder?: NewPaymentOrderInput
+}
+
+export type PaymentOrder = {
+  id: string
+  name: string
+  expectedTotalCents: number
+  createdAt: string
+}
+
+export type RecurringTransaction = {
+  id: string
+  name: string
+  kind: Exclude<TransactionKind, 'transfer'>
+  amountCents: number
+  category: string
+  frequency: RecurringFrequency
+  nextDate: string
+  note?: string
+  active: boolean
+}
+
+export type RecurringTransactionInput = Omit<
+  RecurringTransaction,
+  'id' | 'active'
+> & {
+  id?: string
+  active?: boolean
+}
+
+export type BillImportTransactionInput = Omit<Transaction, 'id' | 'importId'>
+
+export type BillImportInput = {
+  source: Exclude<BillSource, 'manual'>
+  fileName: string
+  transactions: BillImportTransactionInput[]
+}
+
+export type BillImportResult = {
+  importedCount: number
+  duplicateCount: number
+  importId?: string
+}
+
+export type BillImport = {
+  id: string
+  source: Exclude<BillSource, 'manual'>
+  fileName: string
+  importedAt: string
+  transactionIds: string[]
+}
 
 export type FontScale = 'default' | 'large' | 'xlarge'
 
@@ -176,6 +251,9 @@ export type PersonalOSState = {
   weeklyReviews: WeeklyReview[]
   workouts: Workout[]
   healthMetrics: HealthMetric[]
+  paymentOrders: PaymentOrder[]
+  recurringTransactions: RecurringTransaction[]
+  billImports: BillImport[]
   settings: PersonalOSSettings
 }
 
@@ -188,6 +266,11 @@ export type PersonalOSData = {
   addProject: (input: ProjectInput) => void
   setProjectStatus: (id: string, status: ProjectStatus) => void
   recordTransaction: (input: TransactionInput) => void
+  saveRecurringTransaction: (input: RecurringTransactionInput) => void
+  setRecurringTransactionStatus: (id: string, active: boolean) => void
+  recordRecurringTransaction: (id: string, date?: string) => void
+  importBillTransactions: (input: BillImportInput) => BillImportResult
+  undoBillImport: (importId: string) => void
   recordStudyLog: (input: StudyLogInput) => void
   updateMonthlyBudget: (monthlyBudgetCents: number) => void
   addLearningPath: (input: LearningPathInput) => void

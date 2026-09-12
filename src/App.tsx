@@ -211,6 +211,9 @@ export default function App({ data = defaultData }: AppProps) {
           <FinanceQuickRecord
             monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
+            paymentOrders={state.paymentOrders}
+            recurringTransactions={state.recurringTransactions}
+            billImports={state.billImports}
             dialogOpen={quickRecord?.domain === 'finance'}
             dialogTab={quickRecord?.tab ?? 'transaction'}
             onDialogOpen={(tab) => openQuickRecord('finance', tab)}
@@ -218,6 +221,11 @@ export default function App({ data = defaultData }: AppProps) {
             onSaved={showSavedToast}
             onSubmit={data.recordTransaction}
             onBudgetSubmit={data.updateMonthlyBudget}
+            onRecurringSubmit={data.saveRecurringTransaction}
+            onRecurringStatusChange={data.setRecurringTransactionStatus}
+            onRecurringRecord={data.recordRecurringTransaction}
+            onImportSubmit={data.importBillTransactions}
+            onImportUndo={data.undoBillImport}
             expenseCategories={state.settings.expenseCategories}
             incomeCategories={state.settings.incomeCategories}
           />
@@ -301,6 +309,9 @@ export default function App({ data = defaultData }: AppProps) {
           <FinanceQuickRecord
             monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
+            paymentOrders={state.paymentOrders}
+            recurringTransactions={state.recurringTransactions}
+            billImports={state.billImports}
             dialogOpen
             dialogTab={quickRecord.tab ?? 'transaction'}
             dialogOnly
@@ -309,6 +320,11 @@ export default function App({ data = defaultData }: AppProps) {
             onSaved={showSavedToast}
             onSubmit={data.recordTransaction}
             onBudgetSubmit={data.updateMonthlyBudget}
+            onRecurringSubmit={data.saveRecurringTransaction}
+            onRecurringStatusChange={data.setRecurringTransactionStatus}
+            onRecurringRecord={data.recordRecurringTransaction}
+            onImportSubmit={data.importBillTransactions}
+            onImportUndo={data.undoBillImport}
             expenseCategories={state.settings.expenseCategories}
             incomeCategories={state.settings.incomeCategories}
           />

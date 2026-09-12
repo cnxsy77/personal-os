@@ -16,6 +16,16 @@ import type {
   Project,
   ProjectInput,
   ProjectStatus,
+  BillImport,
+  BillImportInput,
+  BillImportResult,
+  BillSource,
+  PaymentOrder,
+  PaymentStage,
+  RecurringFrequency,
+  RecurringTransaction,
+  RecurringTransactionInput,
+  TransactionTag,
   StudyLog,
   StudyLogInput,
   TaskCategory,
@@ -187,10 +197,354 @@ export function createLocalPersonalOSData(
   }
 
   function recordTransaction(input: TransactionInput) {
-    const transaction: Transaction = { ...input, id: createId() }
+    if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+      throw new Error('金额必须是大于 0 的整数金额')
+    }
+
+    const category = input.category.trim()
+    if (!category) {
+      throw new Error('请选择有效分类')
+    }
+
+    if (!isValidDateKey(input.date)) {
+      throw new Error('请选择有效的记账日期')
+    }
+
+    if (input.kind !== 'expense' && input.kind !== 'income' && input.kind !== 'transfer') {
+      throw new Error('请选择有效的收支类型')
+    }
+
+    if (
+      input.stage !== undefined &&
+      !isPaymentStage(input.stage)
+    ) {
+      throw new Error('请选择有效的支付阶段')
+    }
+
+    if (input.source !== undefined && !isBillSource(input.source)) {
+      throw new Error('账单来源无效')
+    }
+
+    if (input.tag !== undefined && !isTransactionTag(input.tag)) {
+      throw new Error('记录标签无效')
+    }
+
+    let paymentOrders = state.paymentOrders
+    let orderId = input.orderId
+    if (input.newOrder) {
+      const name = input.newOrder.name.trim()
+      if (!name) {
+        throw new Error('订单名称不能为空')
+      }
+
+      if (
+        !Number.isInteger(input.newOrder.expectedTotalCents) ||
+        input.newOrder.expectedTotalCents <= 0
+      ) {
+        throw new Error('订单总额必须是大于 0 的整数金额')
+      }
+
+      const order: PaymentOrder = {
+        id: createId(),
+        name,
+        expectedTotalCents: input.newOrder.expectedTotalCents,
+        createdAt: toDateKey(now()),
+      }
+      paymentOrders = [order, ...paymentOrders]
+      orderId = order.id
+    } else if (
+      orderId !== undefined &&
+      !paymentOrders.some((order) => order.id === orderId)
+    ) {
+      throw new Error('关联订单不存在')
+    }
+
+    if (
+      input.relatedTransactionId !== undefined &&
+      !state.transactions.some((item) => item.id === input.relatedTransactionId)
+    ) {
+      throw new Error('退款关联的原记录不存在')
+    }
+
+    if (
+      input.recurringId !== undefined &&
+      !state.recurringTransactions.some((item) => item.id === input.recurringId)
+    ) {
+      throw new Error('周期记录不存在')
+    }
+
+    const optionalText = (value: string | undefined) => {
+      const text = value?.trim()
+      return text ? text : undefined
+    }
+    const tag = input.tag === 'normal' ? undefined : input.tag
+    const transaction: Transaction = {
+      id: createId(),
+      kind: input.kind,
+      amountCents: input.amountCents,
+      category,
+      date: input.date,
+      ...(optionalText(input.note) ? { note: optionalText(input.note) } : {}),
+      ...(tag ? { tag } : {}),
+      ...(orderId ? { orderId } : {}),
+      ...(input.stage ? { stage: input.stage } : {}),
+      ...(input.recurringId ? { recurringId: input.recurringId } : {}),
+      ...(input.relatedTransactionId
+        ? { relatedTransactionId: input.relatedTransactionId }
+        : {}),
+      ...(optionalText(input.counterparty)
+        ? { counterparty: optionalText(input.counterparty) }
+        : {}),
+      ...(input.source ? { source: input.source } : {}),
+      ...(optionalText(input.sourceTradeNo)
+        ? { sourceTradeNo: optionalText(input.sourceTradeNo) }
+        : {}),
+      ...(optionalText(input.occurredAt)
+        ? { occurredAt: optionalText(input.occurredAt) }
+        : {}),
+    }
+
+    commit({
+      ...state,
+      paymentOrders,
+      transactions: [transaction, ...state.transactions],
+    })
+  }
+
+  function saveRecurringTransaction(input: RecurringTransactionInput) {
+    const name = input.name.trim()
+    const category = input.category.trim()
+    if (!name) {
+      throw new Error('周期记录名称不能为空')
+    }
+
+    if (!category) {
+      throw new Error('请选择有效分类')
+    }
+
+    if (
+      input.kind !== 'expense' &&
+      input.kind !== 'income'
+    ) {
+      throw new Error('周期记录类型无效')
+    }
+
+    if (
+      !Number.isInteger(input.amountCents) ||
+      input.amountCents <= 0
+    ) {
+      throw new Error('周期金额必须是大于 0 的整数金额')
+    }
+
+    if (!isRecurringFrequency(input.frequency)) {
+      throw new Error('请选择有效的重复频率')
+    }
+
+    if (!isValidDateKey(input.nextDate)) {
+      throw new Error('请选择有效的下次记录日期')
+    }
+
+    const note = input.note?.trim()
+    const active = input.active ?? true
+    if (input.id) {
+      const exists = state.recurringTransactions.some(
+        (item) => item.id === input.id,
+      )
+      if (!exists) {
+        throw new Error('周期记录不存在')
+      }
+
+      commit({
+        ...state,
+        recurringTransactions: state.recurringTransactions.map((item) =>
+          item.id === input.id
+            ? {
+                ...item,
+                name,
+                kind: input.kind,
+                amountCents: input.amountCents,
+                category,
+                frequency: input.frequency,
+                nextDate: input.nextDate,
+                ...(note ? { note } : {}),
+                active,
+              }
+            : item,
+        ),
+      })
+      return
+    }
+
+    const recurring: RecurringTransaction = {
+      id: createId(),
+      name,
+      kind: input.kind,
+      amountCents: input.amountCents,
+      category,
+      frequency: input.frequency,
+      nextDate: input.nextDate,
+      ...(note ? { note } : {}),
+      active,
+    }
+    commit({
+      ...state,
+      recurringTransactions: [recurring, ...state.recurringTransactions],
+    })
+  }
+
+  function setRecurringTransactionStatus(id: string, active: boolean) {
+    const exists = state.recurringTransactions.some((item) => item.id === id)
+    if (!exists) {
+      throw new Error('周期记录不存在')
+    }
+
+    commit({
+      ...state,
+      recurringTransactions: state.recurringTransactions.map((item) =>
+        item.id === id ? { ...item, active } : item,
+      ),
+    })
+  }
+
+  function recordRecurringTransaction(id: string, date?: string) {
+    const recurring = state.recurringTransactions.find((item) => item.id === id)
+    if (!recurring) {
+      throw new Error('周期记录不存在')
+    }
+
+    const paidDate = date ?? recurring.nextDate
+    if (!isValidDateKey(paidDate)) {
+      throw new Error('请选择有效的记录日期')
+    }
+
+    const transaction: Transaction = {
+      id: createId(),
+      kind: recurring.kind,
+      amountCents: recurring.amountCents,
+      category: recurring.category,
+      date: paidDate,
+      counterparty: recurring.name,
+      tag: 'subscription',
+      recurringId: recurring.id,
+      source: 'manual',
+      ...(recurring.note ? { note: recurring.note } : {}),
+    }
     commit({
       ...state,
       transactions: [transaction, ...state.transactions],
+      recurringTransactions: state.recurringTransactions.map((item) =>
+        item.id === id
+          ? { ...item, nextDate: getNextRecurringDate(item.nextDate, item.frequency) }
+          : item,
+      ),
+    })
+  }
+
+  function importBillTransactions(input: BillImportInput): BillImportResult {
+    if (!isExternalBillSource(input.source)) {
+      throw new Error('账单来源无效')
+    }
+
+    const fileName = input.fileName.trim()
+    if (!fileName) {
+      throw new Error('账单文件名不能为空')
+    }
+
+    if (!Array.isArray(input.transactions)) {
+      throw new Error('账单数据格式无效')
+    }
+
+    const seen = new Set(
+      state.transactions
+        .map((item) => getBillDuplicateKey(item))
+        .filter(Boolean),
+    )
+    const imported: Transaction[] = []
+    const transactionIds: string[] = []
+    let duplicateCount = 0
+
+    for (const draft of input.transactions) {
+      if (
+        !Number.isInteger(draft.amountCents) ||
+        draft.amountCents <= 0 ||
+        !isValidDateKey(draft.date) ||
+        (draft.kind !== 'expense' &&
+          draft.kind !== 'income' &&
+          draft.kind !== 'transfer') ||
+        !draft.category.trim()
+      ) {
+        throw new Error('账单中存在无效记录')
+      }
+
+      const tradeNo = draft.sourceTradeNo?.trim()
+      const duplicateKey = tradeNo
+        ? `${draft.source}:${tradeNo}`
+        : `${draft.source}:${draft.date}:${draft.counterparty ?? ''}:${draft.amountCents}:${draft.kind}`
+      if (seen.has(duplicateKey)) {
+        duplicateCount += 1
+        continue
+      }
+
+      seen.add(duplicateKey)
+      const id = createId()
+      const note = draft.note?.trim()
+      const counterparty = draft.counterparty?.trim()
+      const occurredAt = draft.occurredAt?.trim()
+      imported.push({
+        id,
+        kind: draft.kind,
+        amountCents: draft.amountCents,
+        category: draft.category.trim(),
+        date: draft.date,
+        tag: draft.tag,
+        source: input.source,
+        ...(note ? { note } : {}),
+        ...(counterparty ? { counterparty } : {}),
+        ...(tradeNo ? { sourceTradeNo: tradeNo } : {}),
+        ...(occurredAt ? { occurredAt } : {}),
+      })
+      transactionIds.push(id)
+    }
+
+    if (imported.length === 0) {
+      return { importedCount: 0, duplicateCount }
+    }
+
+    const billImport: BillImport = {
+      id: createId(),
+      source: input.source,
+      fileName,
+      importedAt: now().toISOString(),
+      transactionIds,
+    }
+    const importedTransactions = imported.map((item) => ({
+      ...item,
+      importId: billImport.id,
+    }))
+    commit({
+      ...state,
+      transactions: [...importedTransactions, ...state.transactions],
+      billImports: [billImport, ...state.billImports],
+    })
+    return {
+      importedCount: imported.length,
+      duplicateCount,
+      importId: billImport.id,
+    }
+  }
+
+  function undoBillImport(importId: string) {
+    const billImport = state.billImports.find((item) => item.id === importId)
+    if (!billImport) {
+      throw new Error('导入批次不存在')
+    }
+
+    commit({
+      ...state,
+      transactions: state.transactions.filter(
+        (item) => item.importId !== importId,
+      ),
+      billImports: state.billImports.filter((item) => item.id !== importId),
     })
   }
 
@@ -541,6 +895,11 @@ export function createLocalPersonalOSData(
     addProject,
     setProjectStatus,
     recordTransaction,
+    saveRecurringTransaction,
+    setRecurringTransactionStatus,
+    recordRecurringTransaction,
+    importBillTransactions,
+    undoBillImport,
     recordStudyLog,
     updateMonthlyBudget,
     addLearningPath,
@@ -634,6 +993,9 @@ function createSeedState(now: Date): PersonalOSState {
     weeklyReviews: [],
     workouts: [],
     healthMetrics: [],
+    paymentOrders: [],
+    recurringTransactions: [],
+    billImports: [],
     settings: defaultPersonalOSSettings,
   }
 }
@@ -691,6 +1053,15 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
       : [],
     healthMetrics: Array.isArray(value.healthMetrics)
       ? value.healthMetrics.filter(isHealthMetric)
+      : [],
+    paymentOrders: Array.isArray(value.paymentOrders)
+      ? value.paymentOrders.filter(isPaymentOrder)
+      : [],
+    recurringTransactions: Array.isArray(value.recurringTransactions)
+      ? value.recurringTransactions.filter(isRecurringTransaction)
+      : [],
+    billImports: Array.isArray(value.billImports)
+      ? value.billImports.filter(isBillImport)
       : [],
     settings: normalizeSettings(value.settings, fallback.settings),
   }
@@ -820,14 +1191,142 @@ function isTransaction(value: unknown): value is Transaction {
 
   return (
     typeof value.id === 'string' &&
-    (value.kind === 'expense' || value.kind === 'income') &&
+    (value.kind === 'expense' ||
+      value.kind === 'income' ||
+      value.kind === 'transfer') &&
     typeof value.amountCents === 'number' &&
     Number.isInteger(value.amountCents) &&
     value.amountCents > 0 &&
     typeof value.category === 'string' &&
     typeof value.date === 'string' &&
     /^\d{4}-\d{2}-\d{2}$/.test(value.date)
+  ) && (
+    (value.note === undefined || typeof value.note === 'string') &&
+    (value.tag === undefined || isTransactionTag(value.tag)) &&
+    (value.orderId === undefined || typeof value.orderId === 'string') &&
+    (value.stage === undefined || isPaymentStage(value.stage)) &&
+    (value.recurringId === undefined ||
+      typeof value.recurringId === 'string') &&
+    (value.relatedTransactionId === undefined ||
+      typeof value.relatedTransactionId === 'string') &&
+    (value.counterparty === undefined ||
+      typeof value.counterparty === 'string') &&
+    (value.source === undefined || isBillSource(value.source)) &&
+    (value.sourceTradeNo === undefined ||
+      typeof value.sourceTradeNo === 'string') &&
+    (value.occurredAt === undefined ||
+      typeof value.occurredAt === 'string') &&
+    (value.importId === undefined || typeof value.importId === 'string')
   )
+}
+
+function isPaymentStage(value: unknown): value is PaymentStage {
+  return value === 'deposit' || value === 'final' || value === 'full'
+}
+
+function isBillSource(value: unknown): value is BillSource {
+  return (
+    value === 'manual' || value === 'alipay' || value === 'wechat'
+  )
+}
+
+function isExternalBillSource(
+  value: unknown,
+): value is Exclude<BillSource, 'manual'> {
+  return value === 'alipay' || value === 'wechat'
+}
+
+function isTransactionTag(value: unknown): value is TransactionTag {
+  return (
+    value === 'normal' ||
+    value === 'subscription' ||
+    value === 'refund'
+  )
+}
+
+function isRecurringFrequency(value: unknown): value is RecurringFrequency {
+  return value === 'weekly' || value === 'monthly' || value === 'yearly'
+}
+
+function isValidDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value)
+}
+
+function isPaymentOrder(value: unknown): value is PaymentOrder {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    typeof value.expectedTotalCents === 'number' &&
+    Number.isInteger(value.expectedTotalCents) &&
+    value.expectedTotalCents > 0 &&
+    typeof value.createdAt === 'string' &&
+    isValidDateKey(value.createdAt)
+  )
+}
+
+function isRecurringTransaction(
+  value: unknown,
+): value is RecurringTransaction {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    (value.kind === 'expense' || value.kind === 'income') &&
+    typeof value.amountCents === 'number' &&
+    Number.isInteger(value.amountCents) &&
+    value.amountCents > 0 &&
+    typeof value.category === 'string' &&
+    value.category.trim().length > 0 &&
+    isRecurringFrequency(value.frequency) &&
+    typeof value.nextDate === 'string' &&
+    isValidDateKey(value.nextDate) &&
+    typeof value.active === 'boolean' &&
+    (value.note === undefined || typeof value.note === 'string')
+  )
+}
+
+function isBillImport(value: unknown): value is BillImport {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    isExternalBillSource(value.source) &&
+    typeof value.fileName === 'string' &&
+    value.fileName.trim().length > 0 &&
+    typeof value.importedAt === 'string' &&
+    value.importedAt.length > 0 &&
+    Array.isArray(value.transactionIds) &&
+    value.transactionIds.every((item) => typeof item === 'string')
+  )
+}
+
+function getBillDuplicateKey(transaction: Transaction) {
+  if (!transaction.source || transaction.source === 'manual') {
+    return ''
+  }
+
+  return transaction.sourceTradeNo
+    ? `${transaction.source}:${transaction.sourceTradeNo}`
+    : `${transaction.source}:${transaction.date}:${transaction.counterparty ?? ''}:${transaction.amountCents}:${transaction.kind}`
+}
+
+function getNextRecurringDate(dateKey: string, frequency: RecurringFrequency) {
+  const date = new Date(`${dateKey}T00:00:00Z`)
+
+  if (frequency === 'weekly') {
+    date.setUTCDate(date.getUTCDate() + 7)
+  } else if (frequency === 'monthly') {
+    date.setUTCMonth(date.getUTCMonth() + 1)
+  } else {
+    date.setUTCFullYear(date.getUTCFullYear() + 1)
+  }
+
+  const nextYear = date.getUTCFullYear()
+  const nextMonth = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const nextDay = String(date.getUTCDate()).padStart(2, '0')
+  return `${nextYear}-${nextMonth}-${nextDay}`
 }
 
 function isStudyLog(value: unknown): value is StudyLog {

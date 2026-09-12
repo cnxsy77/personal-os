@@ -1,17 +1,45 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  Ban,
+  Check,
   Plus,
+  RefreshCw,
+  Repeat,
   Wallet,
 } from 'lucide-react'
 import { RecordDialog } from '../components/RecordDialog'
-import type { Transaction, TransactionInput, TransactionKind } from '../data/model'
+import type {
+  BillImportInput,
+  BillImportResult,
+  PersonalOSState,
+  RecurringTransactionInput,
+  Transaction,
+  TransactionInput,
+  TransactionKind,
+} from '../data/model'
+import {
+  calculateOrderProgress,
+  filterTransactions,
+  getPaymentStageLabel,
+  getRecurringFrequencyLabel,
+  getTransactionSourceLabel,
+  getTransactionTitle,
+  groupTransactionsByDate,
+  summarizeFinance,
+} from '../utils/finance'
+import { FinanceImportForm } from './FinanceImportForm'
+import { FinanceRecurringForm } from './FinanceRecurringForm'
+import { FinanceTransactionForm } from './FinanceTransactionForm'
 import './FinanceQuickRecord.css'
 
 type Props = {
   monthlyBudgetCents: number
   transactions: Transaction[]
+  paymentOrders: PersonalOSState['paymentOrders']
+  recurringTransactions: PersonalOSState['recurringTransactions']
+  billImports: PersonalOSState['billImports']
   dialogOpen: boolean
   dialogTab?: string
   dialogOnly?: boolean
@@ -20,13 +48,26 @@ type Props = {
   onSaved: (message: string) => void
   onSubmit: (input: TransactionInput) => void
   onBudgetSubmit: (monthlyBudgetCents: number) => void
+  onRecurringSubmit: (input: RecurringTransactionInput) => void
+  onRecurringStatusChange: (id: string, active: boolean) => void
+  onRecurringRecord: (id: string) => void
+  onImportSubmit: (input: BillImportInput) => BillImportResult
+  onImportUndo: (importId: string) => void
   expenseCategories: string[]
   incomeCategories: string[]
+}
+
+const tagLabels: Record<string, string> = {
+  subscription: '订阅',
+  refund: '退款',
 }
 
 export function FinanceQuickRecord({
   monthlyBudgetCents,
   transactions,
+  paymentOrders,
+  recurringTransactions,
+  billImports,
   dialogOpen,
   dialogTab = 'transaction',
   dialogOnly = false,
@@ -35,81 +76,46 @@ export function FinanceQuickRecord({
   onSaved,
   onSubmit,
   onBudgetSubmit,
+  onRecurringSubmit,
+  onRecurringStatusChange,
+  onRecurringRecord,
+  onImportSubmit,
+  onImportUndo,
   expenseCategories,
   incomeCategories,
 }: Props) {
-  const [kind, setKind] = useState<TransactionKind>('expense')
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState('餐饮')
-  const [error, setError] = useState('')
+  const now = new Date()
+  const [kindFilter, setKindFilter] = useState<TransactionKind | 'all'>('all')
+  const [sourceFilter, setSourceFilter] = useState<
+    'all' | 'manual' | 'alipay' | 'wechat'
+  >('all')
+  const [search, setSearch] = useState('')
   const [budgetDraft, setBudgetDraft] = useState(
     String(monthlyBudgetCents / 100),
   )
   const [budgetError, setBudgetError] = useState('')
-  const now = new Date()
-  const today = toDateKey(now)
-  const categories = kind === 'expense' ? expenseCategories : incomeCategories
 
-  useEffect(() => {
-    if (!categories.includes(category)) {
-      setCategory(categories[0] ?? '')
-    }
-  }, [categories, category])
-  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const monthTransactions = transactions.filter((item) =>
-    item.date.startsWith(monthPrefix),
-  )
-  const monthExpenseTotal = monthTransactions
-    .filter((item) => item.kind === 'expense')
-    .reduce((total, item) => total + item.amountCents, 0)
-  const monthIncomeTotal = monthTransactions
-    .filter((item) => item.kind === 'income')
-    .reduce((total, item) => total + item.amountCents, 0)
-  const todayTotal = transactions
-    .filter((item) => item.date === today && item.kind === 'expense')
-    .reduce((total, item) => total + item.amountCents, 0)
-  const monthCount = transactions.filter((item) => item.date.startsWith(monthPrefix)).length
-  const budgetRemaining = Math.max(0, monthlyBudgetCents - monthExpenseTotal)
-  const budgetUsedPercent = Math.min(
-    100,
-    Math.round((monthExpenseTotal / monthlyBudgetCents) * 100),
-  )
-  const categoryTotals = monthTransactions
-    .filter((item) => item.kind === 'expense')
-    .reduce<Record<string, number>>((totals, item) => {
-      totals[item.category] = (totals[item.category] ?? 0) + item.amountCents
-      return totals
-    }, {})
+  const summary = summarizeFinance(transactions, monthlyBudgetCents, now)
+  const visibleTransactions = filterTransactions(transactions, {
+    kind: kindFilter,
+    source: sourceFilter,
+    query: search,
+  })
+  const dateGroups = groupTransactionsByDate(visibleTransactions)
+  const orderProgress = calculateOrderProgress(paymentOrders, transactions)
+  const categoryTotals = getCategoryTotals(transactions, now)
   const sortedCategoryTotals = Object.entries(categoryTotals).sort(
     ([, amountA], [, amountB]) => amountB - amountA,
   )
 
   function openDialog(tab = dialogTab) {
-    setError('')
     setBudgetError('')
     onDialogOpen(tab)
   }
 
   function closeDialog() {
-    setError('')
     setBudgetError('')
     onDialogClose()
-  }
-
-  function submit(event: FormEvent) {
-    event.preventDefault()
-    const cents = Math.round(Number(amount) * 100)
-
-    if (!Number.isFinite(cents) || cents <= 0) {
-      setError('请输入大于 0 的金额')
-      return
-    }
-
-    onSubmit({ kind, amountCents: cents, category, date: today })
-    setAmount('')
-    setError('')
-    closeDialog()
-    onSaved(kind === 'expense' ? '支出已记录' : '收入已记录')
   }
 
   function submitBudget(event: FormEvent) {
@@ -128,90 +134,80 @@ export function FinanceQuickRecord({
     onSaved('预算已更新')
   }
 
+  function handleTransactionSubmit(input: TransactionInput) {
+    onSubmit(input)
+    closeDialog()
+    onSaved(
+      input.kind === 'expense'
+        ? '支出已记录'
+        : input.kind === 'income'
+          ? '收入已记录'
+          : '转账已记录',
+    )
+  }
+
+  function handleRecurringSubmit(input: RecurringTransactionInput) {
+    onRecurringSubmit(input)
+    closeDialog()
+    onSaved('周期记录已保存')
+  }
+
+  function handleImportSubmit(input: BillImportInput) {
+    const result = onImportSubmit(input)
+    if (result.importedCount > 0) {
+      closeDialog()
+      onSaved(`已导入 ${result.importedCount} 笔账单`)
+    }
+
+    return result
+  }
+
   const financeDialog = (
     <RecordDialog
       activeTab={dialogTab}
-      description="记录收支或调整月度预算。"
+      description="记录收支、导入账单、管理周期记录或调整预算。"
       onClose={closeDialog}
       onTabChange={openDialog}
       open={dialogOpen}
       tabs={[
         { id: 'transaction', label: '收支' },
+        { id: 'import', label: '导入' },
+        { id: 'recurring', label: '周期' },
         { id: 'budget', label: '预算' },
       ]}
       title="添加记账记录"
     >
       {dialogTab === 'transaction' ? (
-        <form onSubmit={submit} className="finance-form">
-          <div className="segmented" role="group" aria-label="记录类型">
-            <button
-              type="button"
-              className={kind === 'expense' ? 'selected' : ''}
-              aria-pressed={kind === 'expense'}
-              onClick={() => {
-                setKind('expense')
-                setCategory('餐饮')
-              }}
-            >
-              <ArrowDownCircle size={16} />
-              支出
-            </button>
-            <button
-              type="button"
-              className={kind === 'income' ? 'selected' : ''}
-              aria-pressed={kind === 'income'}
-              onClick={() => {
-                setKind('income')
-                setCategory('工资')
-              }}
-            >
-              <ArrowUpCircle size={16} />
-              收入
-            </button>
-          </div>
-
-          <div className="finance-fields">
-            <div>
-              <label htmlFor="finance-amount">金额</label>
-              <input
-                id="finance-amount"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                inputMode="decimal"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="0.00"
-              />
-            </div>
-            <div>
-              <label htmlFor="finance-category">分类</label>
-              <select
-                id="finance-category"
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-              >
-                {categories.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit">记录</button>
-          </div>
-          {error ? <p role="alert">{error}</p> : null}
-        </form>
+        <FinanceTransactionForm
+          expenseCategories={expenseCategories}
+          incomeCategories={incomeCategories}
+          onSubmit={handleTransactionSubmit}
+          orders={paymentOrders}
+          transactions={transactions}
+        />
+      ) : dialogTab === 'import' ? (
+        <FinanceImportForm
+          onSubmit={handleImportSubmit}
+          transactions={transactions}
+        />
+      ) : dialogTab === 'recurring' ? (
+        <FinanceRecurringForm
+          expenseCategories={expenseCategories}
+          incomeCategories={incomeCategories}
+          onSubmit={handleRecurringSubmit}
+        />
       ) : (
-        <form onSubmit={submitBudget} className="budget-form dialog-form">
+        <form className="budget-form dialog-form" onSubmit={submitBudget}>
           <div>
             <label htmlFor="finance-budget">设置预算</label>
             <input
               id="finance-budget"
-              value={budgetDraft}
-              onChange={(event) => setBudgetDraft(event.target.value)}
               inputMode="decimal"
-              type="number"
               min="0.01"
+              onChange={(event) => setBudgetDraft(event.target.value)}
               step="0.01"
+              type="number"
+              value={budgetDraft}
             />
           </div>
           <button type="submit">更新</button>
@@ -227,9 +223,9 @@ export function FinanceQuickRecord({
 
   return (
     <div className="finance-page">
-      <section className="finance-panel" aria-labelledby="finance-title">
+      <section aria-labelledby="finance-title" className="finance-panel">
         <div className="panel-heading">
-          <h2 id="finance-title">快速收支</h2>
+          <h2 id="finance-title">收支流水</h2>
           <button
             className="page-add"
             onClick={() => openDialog('transaction')}
@@ -240,26 +236,136 @@ export function FinanceQuickRecord({
           </button>
         </div>
 
-        <div className="finance-summary">
+        <div aria-label="记账摘要" className="finance-summary">
           <div>
             <label>今日支出</label>
-            <strong>{formatCents(todayTotal)}</strong>
+            <strong>{formatCents(summary.todayExpenseCents)}</strong>
           </div>
           <div>
             <label>本月支出</label>
-            <strong>{formatCents(monthExpenseTotal)}</strong>
+            <strong>{formatCents(summary.monthExpenseCents)}</strong>
           </div>
           <div>
             <label>本月收入</label>
-            <strong>{formatCents(monthIncomeTotal)}</strong>
+            <strong>{formatCents(summary.monthIncomeCents)}</strong>
           </div>
           <div>
-            <label>本月记录</label>
-            <strong>{monthCount} 笔</strong>
+            <label>退款</label>
+            <strong>{formatCents(summary.monthRefundCents)}</strong>
+          </div>
+          <div>
+            <label>转账</label>
+            <strong>{formatCents(summary.monthTransferCents)}</strong>
           </div>
         </div>
 
-        <section className="category-panel" aria-labelledby="category-title">
+        <div aria-label="流水筛选" className="finance-filters">
+          <select
+            aria-label="记录类型筛选"
+            onChange={(event) =>
+              setKindFilter(event.target.value as TransactionKind | 'all')
+            }
+            value={kindFilter}
+          >
+            <option value="all">全部类型</option>
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+            <option value="transfer">转账</option>
+          </select>
+          <select
+            aria-label="来源筛选"
+            onChange={(event) =>
+              setSourceFilter(event.target.value as typeof sourceFilter)
+            }
+            value={sourceFilter}
+          >
+            <option value="all">全部来源</option>
+            <option value="manual">手动</option>
+            <option value="alipay">支付宝</option>
+            <option value="wechat">微信</option>
+          </select>
+          <input
+            aria-label="搜索流水"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="搜索分类、备注、商户或单号"
+            type="search"
+            value={search}
+          />
+        </div>
+
+        <div aria-live="polite" className="transaction-groups">
+          {dateGroups.length === 0 ? (
+            <p className="empty-transactions">没有符合条件的流水</p>
+          ) : (
+            dateGroups.map((group) => (
+              <section className="transaction-date-group" key={group.date}>
+                <h3>{formatDate(group.date)}</h3>
+                <ul aria-label={`${formatDate(group.date)} 收支流水`}>
+                  {group.transactions.map((item) => (
+                    <li key={item.id}>
+                      <i className={item.kind}>
+                        {item.kind === 'expense' ? (
+                          <ArrowDownCircle size={17} />
+                        ) : item.kind === 'income' ? (
+                          <ArrowUpCircle size={17} />
+                        ) : (
+                          <Repeat size={17} />
+                        )}
+                      </i>
+                      <div>
+                        <h4>{getTransactionTitle(item)}</h4>
+                        <p>
+                          <span>{item.category}</span>
+                          <span>{getTransactionSourceLabel(item)}</span>
+                          {item.note ? <span>{item.note}</span> : null}
+                          {getPaymentStageLabel(item) ? (
+                            <span>{getPaymentStageLabel(item)}</span>
+                          ) : null}
+                          {item.tag ? <span>{tagLabels[item.tag]}</span> : null}
+                        </p>
+                      </div>
+                      <b className={item.kind}>
+                        {item.kind === 'expense'
+                          ? '-'
+                          : item.kind === 'income'
+                            ? '+'
+                            : ''}
+                        {formatCents(item.amountCents)}
+                      </b>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
+        </div>
+      </section>
+
+      <aside aria-labelledby="budget-title" className="finance-side">
+        <section aria-labelledby="budget-title" className="finance-panel">
+          <h2 id="budget-title">月度预算</h2>
+          <div className="budget-status">
+            <div>
+              <label>剩余预算</label>
+              <strong>{formatCents(summary.budgetRemainingCents)}</strong>
+            </div>
+            <div>
+              <label>已使用</label>
+              <strong>{summary.budgetUsedPercent}%</strong>
+            </div>
+          </div>
+          <progress
+            aria-label="预算使用进度"
+            max={100}
+            value={summary.budgetUsedPercent}
+          />
+          <p>
+            <Wallet size={15} />
+            退款会冲减支出，转账不计入预算。
+          </p>
+        </section>
+
+        <section aria-labelledby="category-title" className="finance-panel">
           <h3 id="category-title">本月分类</h3>
           <ul aria-label="本月分类统计">
             {sortedCategoryTotals.map(([name, amountCents]) => (
@@ -271,53 +377,132 @@ export function FinanceQuickRecord({
           </ul>
         </section>
 
-        <div className="finance-list-heading">
-          <h3>最近记录</h3>
-        </div>
-        <ul aria-label="最近收支">
-          {transactions.slice(0, 8).map((item) => (
-            <li key={item.id}>
-              <i className={item.kind}>
-                {item.kind === 'expense'
-                  ? <ArrowDownCircle size={17} />
-                  : <ArrowUpCircle size={17} />}
-              </i>
-              <div>
-                <h4>{item.category}</h4>
-                <p>{formatDate(item.date)}</p>
-              </div>
-              <b>{item.kind === 'expense' ? '-' : '+'}{formatCents(item.amountCents)}</b>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section aria-labelledby="order-progress-title" className="finance-panel">
+          <h3 id="order-progress-title">订单进度</h3>
+          {orderProgress.length === 0 ? (
+            <p className="side-empty">暂无订单</p>
+          ) : (
+            <ul aria-label="订单进度">
+              {orderProgress.map(({ order, paidCents, remainingCents, percent }) => (
+                <li key={order.id} className="order-progress">
+                  <div>
+                    <strong>{order.name}</strong>
+                    <span>
+                      {formatCents(paidCents)} / {formatCents(order.expectedTotalCents)}
+                    </span>
+                  </div>
+                  <progress aria-label={`${order.name}支付进度`} max={100} value={percent} />
+                  <p>未付 {formatCents(remainingCents)} · {percent}%</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      <aside className="finance-panel budget-side" aria-labelledby="budget-title">
-        <h2 id="budget-title">月度预算</h2>
-        <div className="budget-status">
-          <div>
-            <label>剩余预算</label>
-            <strong>{formatCents(budgetRemaining)}</strong>
-          </div>
-          <div>
-            <label>已使用</label>
-            <strong>{budgetUsedPercent}%</strong>
-          </div>
-        </div>
-        <progress
-          aria-label="预算使用进度"
-          max={100}
-          value={budgetUsedPercent}
-        />
-        <p>
-          <Wallet size={15} />
-          预算快照会随每笔支出自动更新。
-        </p>
+        <section aria-labelledby="recurring-title" className="finance-panel">
+          <h3 id="recurring-title">周期记录</h3>
+          {recurringTransactions.length === 0 ? (
+            <p className="side-empty">暂无周期记录</p>
+          ) : (
+            <ul aria-label="周期记录列表">
+              {recurringTransactions.map((item) => (
+                <li key={item.id} className="recurring-item">
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span>
+                      {formatCents(item.amountCents)} ·{' '}
+                      {getRecurringFrequencyLabel(item.frequency)} ·{' '}
+                      {formatDate(item.nextDate)}
+                    </span>
+                  </div>
+                  <div className="recurring-actions">
+                    <button
+                      disabled={!item.active}
+                      onClick={() => onRecurringRecord(item.id)}
+                      type="button"
+                    >
+                      <Check size={14} />
+                      记一笔
+                    </button>
+                    <button
+                      aria-label={`${item.active ? '停用' : '启用'}${item.name}`}
+                      onClick={() =>
+                        onRecurringStatusChange(item.id, !item.active)
+                      }
+                      type="button"
+                    >
+                      {item.active ? <Ban size={14} /> : <RefreshCw size={14} />}
+                      {item.active ? '停用' : '启用'}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section aria-labelledby="import-history-title" className="finance-panel">
+          <h3 id="import-history-title">导入历史</h3>
+          {billImports.length === 0 ? (
+            <p className="side-empty">暂无导入批次</p>
+          ) : (
+            <ul aria-label="账单导入历史">
+              {billImports.map((item) => (
+                <li key={item.id} className="import-item">
+                  <div>
+                    <strong>{item.fileName}</strong>
+                    <span>
+                      {item.source === 'alipay' ? '支付宝' : '微信'} ·{' '}
+                      {item.transactionIds.length} 笔
+                    </span>
+                  </div>
+                  <button
+                    aria-label={`撤销${item.fileName}`}
+                    onClick={() => onImportUndo(item.id)}
+                    type="button"
+                  >
+                    撤销
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </aside>
 
       {financeDialog}
     </div>
   )
+}
+
+function getCategoryTotals(transactions: Transaction[], now: Date) {
+  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const totals: Record<string, number> = {}
+
+  for (const item of transactions) {
+    if (!item.date.startsWith(monthPrefix) || item.kind !== 'expense') {
+      continue
+    }
+
+    totals[item.category] = (totals[item.category] ?? 0) + item.amountCents
+  }
+
+  for (const item of transactions) {
+    if (
+      !item.date.startsWith(monthPrefix) ||
+      item.kind !== 'income' ||
+      item.tag !== 'refund'
+    ) {
+      continue
+    }
+
+    totals[item.category] = Math.max(
+      0,
+      (totals[item.category] ?? 0) - item.amountCents,
+    )
+  }
+
+  return totals
 }
 
 function formatCents(cents: number) {
@@ -326,10 +511,4 @@ function formatCents(cents: number) {
 
 function formatDate(date: string) {
   return date.replaceAll('-', '.')
-}
-
-function toDateKey(value: Date) {
-  const month = String(value.getMonth() + 1).padStart(2, '0')
-  const day = String(value.getDate()).padStart(2, '0')
-  return `${value.getFullYear()}-${month}-${day}`
 }

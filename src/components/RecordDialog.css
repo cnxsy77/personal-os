@@ -10,6 +10,7 @@
 }
 
 .record-dialog {
+  font-size: inherit;
   width: min(780px, 100%);
   max-height: min(760px, calc(100dvh - 64px));
   display: flex;
@@ -40,14 +41,14 @@
 
 .record-dialog-header h2 {
   margin: 0;
-  font-size: 25px;
+  font-size: max(28px, 1.65em);
   letter-spacing: -0.8px;
 }
 
 .record-dialog-header p {
   margin: 7px 0 0;
   color: #93a095;
-  font-size: 14px;
+  font-size: max(16px, 0.94em);
 }
 
 .record-dialog-header button,
@@ -87,7 +88,7 @@
   background: transparent;
   color: #8f9b91;
   font: inherit;
-  font-size: 14px;
+  font-size: max(15px, 0.88em);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -129,7 +130,7 @@
 
 .domain-choice span {
   align-self: center;
-  font-size: 15px;
+  font-size: max(16px, 0.94em);
   font-weight: 650;
 }
 
@@ -152,7 +153,7 @@
   }
 
   .record-dialog-header h2 {
-    font-size: 22px;
+    font-size: max(24px, 1.41em);
   }
 
   .record-dialog-tabs {
@@ -184,4 +185,33 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+.record-dialog .record-dialog-body form label,
+.record-dialog .record-dialog-body .kind-token,
+.record-dialog .record-dialog-body .kind-placeholder {
+  font-size: max(14px, 0.82em);
+}
+
+.record-dialog .record-dialog-body form input,
+.record-dialog .record-dialog-body form select,
+.record-dialog .record-dialog-body form textarea,
+.record-dialog .record-dialog-body .kind-trigger {
+  font-size: max(16px, 0.94em);
+}
+
+.record-dialog .record-dialog-body form button,
+.record-dialog .record-dialog-body .segmented button,
+.record-dialog .record-dialog-body .plan-fields button,
+.record-dialog .record-dialog-body .finance-fields button,
+.record-dialog .record-dialog-body .learning-fields button,
+.record-dialog .record-dialog-body .compact-form button,
+.record-dialog .record-dialog-body .resource-form button,
+.record-dialog .record-dialog-body .review-form button,
+.record-dialog .record-dialog-body .workbench-fields button {
+  font-size: max(15px, 0.88em);
+}
+
+.record-dialog .record-dialog-body form [role='alert'] {
+  font-size: max(14px, 0.82em);
 }

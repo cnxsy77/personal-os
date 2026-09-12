@@ -158,7 +158,7 @@ export function RecordDialog({
 
         {tabs && tabs.length > 0 ? (
           <div
-            aria-label="记录类型"
+            aria-label={`${title} 标签页`}
             className="record-dialog-tabs"
             role="tablist"
           >

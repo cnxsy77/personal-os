@@ -13,6 +13,7 @@ import {
   getCompletedWorkoutsThisWeek,
   workoutKindLabels,
 } from '../utils/health'
+import { summarizeFinance } from '../utils/finance'
 import {
   formatStudyDuration,
   getRecentStudyMinutes,
@@ -71,7 +72,12 @@ export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
   const todayTasks = state.tasks.filter((task) => task.date === today)
   const doneTodayCount = todayTasks.filter((task) => task.done).length
   const remainingTodayCount = todayTasks.length - doneTodayCount
-  const monthExpense = sumMonthExpenses(state.transactions)
+  const financeSummary = summarizeFinance(
+    state.transactions,
+    state.monthlyBudgetCents,
+    now,
+  )
+  const monthExpense = financeSummary.monthExpenseCents
   const budgetRemaining = Math.max(0, state.monthlyBudgetCents - monthExpense)
   const completedWorkouts = getCompletedWorkoutsThisWeek(state.workouts, now)
   const weeklyWorkoutTarget = state.settings.weeklyWorkoutTarget
@@ -387,7 +393,11 @@ function buildRecords(state: PersonalOSState, now: Date): OverviewRecord[] {
     id: transaction.id,
     domain: 'finance' as const,
     title: transaction.category,
-    keyData: `${transaction.kind === 'expense' ? '-' : '+'}${formatCents(transaction.amountCents)}`,
+    keyData: transaction.kind === 'expense'
+      ? `-${formatCents(transaction.amountCents)}`
+      : transaction.kind === 'income'
+        ? `+${formatCents(transaction.amountCents)}`
+        : formatCents(transaction.amountCents),
     timing: formatDate(transaction.date),
     status: '已记录',
     tone: 'neutral' as const,
@@ -500,15 +510,6 @@ function getProjectStatusLabel(status: PersonalOSState['projects'][number]['stat
   }
 
   return '计划中'
-}
-
-function sumMonthExpenses(transactions: PersonalOSState['transactions']) {
-  const now = new Date()
-  const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-
-  return transactions
-    .filter((item) => item.date.startsWith(monthPrefix) && item.kind === 'expense')
-    .reduce((total, item) => total + item.amountCents, 0)
 }
 
 function addDays(value: Date, days: number) {

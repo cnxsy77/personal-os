@@ -127,6 +127,149 @@ describe('local Personal OS data', () => {
     })
   })
 
+  it('persists finance notes, orders, refunds, and recurring records', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordTransaction({
+      kind: 'expense',
+      amountCents: 200000,
+      category: '数码',
+      date: '2026-09-01',
+      note: '相机定金',
+      newOrder: { name: '微单相机', expectedTotalCents: 300000 },
+      stage: 'deposit',
+    })
+    const orderId = data.getSnapshot().paymentOrders[0].id
+    const expenseId = data.getSnapshot().transactions[0].id
+
+    data.recordTransaction({
+      kind: 'expense',
+      amountCents: 100000,
+      category: '数码',
+      date: '2026-09-20',
+      orderId,
+      stage: 'final',
+      note: '相机尾款',
+    })
+    data.recordTransaction({
+      kind: 'income',
+      amountCents: 5000,
+      category: '数码',
+      date: '2026-09-21',
+      tag: 'refund',
+      relatedTransactionId: expenseId,
+      note: '配件退款',
+    })
+    data.saveRecurringTransaction({
+      name: '云存储订阅',
+      kind: 'expense',
+      amountCents: 2100,
+      category: '订阅',
+      frequency: 'monthly',
+      nextDate: '2026-10-01',
+      note: '自动续费前手动确认',
+    })
+    const recurringId = data.getSnapshot().recurringTransactions[0].id
+    data.recordRecurringTransaction(recurringId, '2026-10-01')
+
+    const reloaded = createLocalPersonalOSData({ storage })
+    expect(reloaded.getSnapshot().paymentOrders).toHaveLength(1)
+    expect(reloaded.getSnapshot().paymentOrders[0]).toMatchObject({
+      name: '微单相机',
+      expectedTotalCents: 300000,
+    })
+    expect(reloaded.getSnapshot().transactions).toHaveLength(5)
+    expect(reloaded.getSnapshot().transactions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          note: '相机定金',
+          orderId,
+          stage: 'deposit',
+        }),
+        expect.objectContaining({
+          tag: 'refund',
+          relatedTransactionId: expenseId,
+        }),
+        expect.objectContaining({
+          tag: 'subscription',
+          recurringId,
+          date: '2026-10-01',
+        }),
+      ]),
+    )
+    expect(reloaded.getSnapshot().recurringTransactions[0]).toMatchObject({
+      nextDate: '2026-11-01',
+      active: true,
+    })
+  })
+
+  it('imports bills, skips duplicates, and undoes only the imported batch', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordTransaction({
+      kind: 'expense',
+      amountCents: 4500,
+      category: '餐饮',
+      date: '2026-09-10',
+      source: 'alipay',
+      sourceTradeNo: 'ALI-1',
+    })
+
+    const first = data.importBillTransactions({
+      source: 'alipay',
+      fileName: 'alipay.csv',
+      transactions: [
+        {
+          kind: 'expense',
+          amountCents: 4500,
+          category: '餐饮',
+          date: '2026-09-10',
+          source: 'alipay',
+          sourceTradeNo: 'ALI-1',
+        },
+        {
+          kind: 'expense',
+          amountCents: 8800,
+          category: '交通',
+          date: '2026-09-11',
+          source: 'alipay',
+          sourceTradeNo: 'ALI-2',
+        },
+      ],
+    })
+    const second = data.importBillTransactions({
+      source: 'alipay',
+      fileName: 'alipay.csv',
+      transactions: [
+        {
+          kind: 'expense',
+          amountCents: 8800,
+          category: '交通',
+          date: '2026-09-11',
+          source: 'alipay',
+          sourceTradeNo: 'ALI-2',
+        },
+      ],
+    })
+
+    expect(first).toMatchObject({ importedCount: 1, duplicateCount: 1 })
+    expect(second).toEqual({ importedCount: 0, duplicateCount: 1 })
+    expect(data.getSnapshot().transactions).toHaveLength(3)
+    expect(data.getSnapshot().billImports).toHaveLength(1)
+
+    const importId = data.getSnapshot().billImports[0].id
+    data.undoBillImport(importId)
+
+    expect(data.getSnapshot().transactions).toHaveLength(2)
+    expect(data.getSnapshot().transactions[0]).toMatchObject({
+      source: 'alipay',
+      sourceTradeNo: 'ALI-1',
+    })
+    expect(data.getSnapshot().billImports).toEqual([])
+  })
+
   it('persists learning logs for the next session', () => {
     const storage = createMemoryStorage()
     const data = createLocalPersonalOSData({ storage })
@@ -173,6 +316,9 @@ describe('local Personal OS data', () => {
     expect(migrated.getSnapshot().weeklyReviews).toEqual([])
     expect(migrated.getSnapshot().workouts).toEqual([])
     expect(migrated.getSnapshot().healthMetrics).toEqual([])
+    expect(migrated.getSnapshot().paymentOrders).toEqual([])
+    expect(migrated.getSnapshot().recurringTransactions).toEqual([])
+    expect(migrated.getSnapshot().billImports).toEqual([])
 
     migrated.recordStudyLog({
       topic: 'TypeScript 泛型',
@@ -563,7 +709,7 @@ describe('local Personal OS data', () => {
 
     expect(migrated.getSnapshot().settings).toMatchObject({
       weeklyWorkoutTarget: 4,
-      expenseCategories: ['餐饮', '交通', '购物', '住房', '其他'],
+      expenseCategories: ['餐饮', '交通', '购物', '住房', '订阅', '其他'],
       incomeCategories: ['工资', '奖金', '理财', '其他'],
       fontScale: 'default',
       reducedMotion: false,
@@ -616,7 +762,7 @@ describe('local Personal OS data', () => {
       expenseCategories: ['餐饮', ' 餐饮 ', ''],
     })
     expect(data.getSnapshot().settings.expenseCategories).toEqual(['餐饮'])
-    expect(before.settings.expenseCategories).toHaveLength(5)
+    expect(before.settings.expenseCategories).toHaveLength(6)
 
     const afterCategories = data.getSnapshot()
     expect(() =>

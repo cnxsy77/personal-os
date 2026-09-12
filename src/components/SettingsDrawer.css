@@ -7,6 +7,7 @@
 }
 
 .settings-drawer {
+  font-size: inherit;
   position: absolute;
   top: 0;
   right: 0;
@@ -34,14 +35,14 @@
 
 .settings-header h2 {
   margin: 0;
-  font-size: 26px;
+  font-size: max(28px, 1.65em);
   letter-spacing: -0.8px;
 }
 
 .settings-header p {
   margin: 8px 0 0;
   color: #93a095;
-  font-size: 14px;
+  font-size: max(15px, 0.88em);
 }
 
 .settings-header button {
@@ -67,7 +68,7 @@
 
 .settings-body h3 {
   margin: 0 0 12px;
-  font-size: 17px;
+  font-size: max(18px, 1.06em);
 }
 
 .settings-card {
@@ -82,7 +83,7 @@
 .settings-card p {
   margin: 0;
   color: #9fac9f;
-  font-size: 14px;
+  font-size: max(15px, 0.88em);
 }
 
 .settings-segmented {
@@ -180,7 +181,7 @@
   background: transparent;
   color: #d5ded5;
   font: inherit;
-  font-size: 13px;
+  font-size: max(14px, 0.82em);
   cursor: pointer;
 }
 
@@ -196,7 +197,7 @@
   margin-bottom: 9px;
   color: #93a095;
   font-family: "DM Mono", monospace;
-  font-size: 11.5px;
+  font-size: max(14px, 0.82em);
   letter-spacing: 0.1em;
 }
 
@@ -206,7 +207,7 @@
   gap: 10px;
   color: #dbe3db;
   font: inherit;
-  font-size: 15px;
+  font-size: max(16px, 0.94em);
   font-weight: 650;
 }
 
@@ -220,11 +221,11 @@
 .settings-card [role='alert'] {
   margin: 0;
   color: #ff9a8b;
-  font-size: 13.5px;
+  font-size: max(14px, 0.82em);
 }
 
 .settings-hint {
-  font-size: 13px;
+  font-size: max(14px, 0.82em);
 }
 
 @media (max-width: 560px) {
