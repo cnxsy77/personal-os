@@ -699,8 +699,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.record-dialog .health-fields .form-field-full,
-.record-dialog .health-fields .coach-plan-hint {
+.record-dialog .health-fields .form-field-full {
   grid-column: 1 / -1;
 }
 
@@ -999,12 +998,6 @@
   min-height: 92px;
 }
 
-.coach-plan-hint {
-  margin: 0;
-  color: #75d99b;
-  font-size: 13.5px;
-}
-
 .health-fields > button,
 .metric-fields > button {
   display: inline-flex;
@@ -1161,7 +1154,6 @@
 
   .record-dialog .health-fields .form-field-half,
   .record-dialog .health-fields .form-field-full,
-  .record-dialog .health-fields .coach-plan-hint,
   .record-dialog .health-fields > button[type='button'],
   .record-dialog .health-fields > button[type='submit'],
   .record-dialog .metric-fields > button {

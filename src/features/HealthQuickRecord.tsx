@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Dumbbell,
   HeartPulse,
   ListChecks,
@@ -37,7 +36,6 @@ import {
   weeklyWorkoutTarget,
   workoutKindLabels,
 } from '../utils/health'
-import { parseCoachWorkoutPlans } from '../utils/coachWorkoutPlan'
 import {
   filterWorkoutsByMode,
   filterWorkoutsByMonth,
@@ -115,8 +113,6 @@ export function HealthQuickRecord({
   const [duration, setDuration] = useState('')
   const [notes, setNotes] = useState('')
   const [focus, setFocus] = useState('')
-  const [coachPlanText, setCoachPlanText] = useState('')
-  const [parsedPlans, setParsedPlans] = useState<WorkoutInput[] | null>(null)
   const [warmupText, setWarmupText] = useState('')
   const [finisherText, setFinisherText] = useState('')
   const [sorenessText, setSorenessText] = useState('')
@@ -187,22 +183,6 @@ export function HealthQuickRecord({
     onDialogOpen(tab)
   }
 
-  function applyPlanToForm(plan: WorkoutInput) {
-    const planKinds = plan.kinds?.filter(isSelectableWorkoutKind) ?? []
-    setWorkoutDate(plan.date)
-    setSelectedWorkoutKinds(
-      planKinds.length > 0
-        ? planKinds
-        : [plan.kind].filter(isSelectableWorkoutKind),
-    )
-    setDuration(plan.durationMinutes ? String(plan.durationMinutes) : '')
-    setFocus(plan.focus ?? '')
-    setWarmupText((plan.warmup ?? []).join('\n'))
-    setFinisherText((plan.finisher ?? []).join('\n'))
-    setSorenessText((plan.sorenessAreas ?? []).join('，'))
-    setNotes((plan.coachNotes ?? []).join('\n'))
-  }
-
   function startWorkoutEdit(workout: Workout) {
     const selectedKinds = workout.kinds?.filter(isSelectableWorkoutKind) ?? []
 
@@ -215,12 +195,10 @@ export function HealthQuickRecord({
     )
     setDuration(String(workout.durationMinutes || ''))
     setFocus(workout.focus ?? '')
-    setCoachPlanText('')
-    setParsedPlans(null)
     setWarmupText((workout.warmup ?? []).join('\n'))
     setFinisherText((workout.finisher ?? []).join('\n'))
     setSorenessText((workout.sorenessAreas ?? []).join('，'))
-    setNotes((workout.coachNotes ?? []).join('\n'))
+    setNotes(workout.notes)
     setWorkoutError('')
     onDialogOpen('workout')
   }
@@ -237,62 +215,21 @@ export function HealthQuickRecord({
     )
   }
 
-  function parseCoachPlan() {
-    const plans = parseCoachWorkoutPlans(coachPlanText, now)
-
-    if (plans.length === 0) {
-      setParsedPlans(null)
-      setWorkoutError('请粘贴包含日期的教练计划')
-      return
+  function buildWorkoutInput(): WorkoutInput {
+    return {
+      date: workoutDate,
+      kind: selectedWorkoutKinds[0],
+      kinds: selectedWorkoutKinds,
+      status: 'completed',
+      durationMinutes: Number(duration),
+      notes,
+      focus: focus || undefined,
+      warmup: splitLines(warmupText),
+      exercises: editingWorkout?.exercises,
+      finisher: splitLines(finisherText),
+      sorenessAreas: splitSorenessAreas(sorenessText),
+      coachNotes: editingWorkout?.coachNotes,
     }
-
-    if (editingWorkout && plans.length > 1) {
-      setParsedPlans(null)
-      setWorkoutError('编辑时请粘贴单日教练计划')
-      return
-    }
-
-    setParsedPlans(plans)
-    applyPlanToForm(plans[0])
-    setWorkoutError('')
-  }
-
-  function buildWorkoutInputs(): WorkoutInput[] {
-    const plan = parsedPlans?.[0]
-
-    if (parsedPlans && parsedPlans.length > 1) {
-      return parsedPlans.map((item, index) =>
-        index === 0
-          ? {
-              ...item,
-              date: workoutDate,
-              kind: selectedWorkoutKinds[0],
-              kinds: selectedWorkoutKinds,
-              status: 'completed',
-              durationMinutes: Number(duration) || 0,
-              focus: focus || item.focus,
-              notes,
-            }
-          : item,
-      )
-    }
-
-    return [
-      {
-        date: workoutDate,
-        kind: selectedWorkoutKinds[0],
-        kinds: selectedWorkoutKinds,
-        status: 'completed',
-        durationMinutes: Number(duration),
-        notes,
-        focus: focus || undefined,
-        warmup: splitLines(warmupText),
-        exercises: plan?.exercises ?? editingWorkout?.exercises,
-        finisher: splitLines(finisherText),
-        sorenessAreas: splitSorenessAreas(sorenessText),
-        coachNotes: splitLines(notes),
-      },
-    ]
   }
 
   function closeDialog() {
@@ -304,7 +241,7 @@ export function HealthQuickRecord({
 
   function submitWorkout(event: FormEvent) {
     event.preventDefault()
-    const inputs = buildWorkoutInputs()
+    const workoutInput = buildWorkoutInput()
     const normalizedDuration = Number(duration)
 
     if (selectedWorkoutKinds.length === 0) {
@@ -325,22 +262,15 @@ export function HealthQuickRecord({
     let savedMessage = '训练已保存'
 
     if (editingWorkout) {
-      onWorkoutUpdate(editingWorkout.id, inputs[0])
+      onWorkoutUpdate(editingWorkout.id, workoutInput)
       savedMessage = '训练已更新'
     } else {
-      // Data prepends each workout, so reverse a batch to retain text order.
-      [...inputs].reverse().forEach((input) => onWorkoutSubmit(input))
-
-      if (inputs.length > 1) {
-        savedMessage = `已保存 ${inputs.length} 次训练`
-      }
+      onWorkoutSubmit(workoutInput)
     }
 
     setNotes('')
     setDuration('')
     setFocus('')
-    setCoachPlanText('')
-    setParsedPlans(null)
     setWarmupText('')
     setFinisherText('')
     setSorenessText('')
@@ -521,25 +451,6 @@ export function HealthQuickRecord({
                 placeholder="胸加肩"
               />
             </div>
-            <div className="form-field-full">
-              <label htmlFor="coach-plan">教练计划</label>
-              <textarea
-                id="coach-plan"
-                value={coachPlanText}
-                onChange={(event) => setCoachPlanText(event.target.value)}
-                placeholder={'9月9日\n胸加肩\n哑铃飞鸟12×2×4\n肌肉延迟性酸痛\n胸大肌，肩前束'}
-                rows={6}
-              />
-            </div>
-            <button onClick={parseCoachPlan} type="button">
-              <ClipboardList size={16} />
-              解析教练计划
-            </button>
-            {parsedPlans && parsedPlans.length > 1 ? (
-              <p className="coach-plan-hint">
-                已识别 {parsedPlans.length} 次训练，保存时将全部导入。
-              </p>
-            ) : null}
             <div className="form-field-half">
               <label htmlFor="workout-warmup">热身与准备</label>
               <textarea

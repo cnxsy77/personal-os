@@ -181,50 +181,56 @@ describe('health quick capture', () => {
     expect(data.getSnapshot().workouts).toHaveLength(0)
   })
 
-  it('imports multi-day coach plans and shows structured workout details', async () => {
+  it('shows structured workout details and preserves them when editing', async () => {
     const user = userEvent.setup()
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    data.recordWorkout({
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest', 'shoulders'],
+      status: 'completed',
+      durationMinutes: 60,
+      notes: '',
+      focus: '胸加肩',
+      warmup: ['热身泡沫轴松解'],
+      exercises: [
+        { name: '哑铃飞鸟', prescription: '12×2×4' },
+        { name: '史密斯上斜推胸', prescription: '12×4' },
+      ],
+      finisher: ['核心收尾'],
+      sorenessAreas: ['胸大肌', '肩前束', '肱三头肌'],
+      coachNotes: ['整体强度还不错'],
+    })
     render(<App data={data} />)
 
     await user.click(screen.getByRole('button', { name: '健康' }))
-    await user.click(screen.getByRole('button', { name: '添加记录' }))
-    fireEvent.change(screen.getByLabelText('教练计划'), {
-      target: {
-        value: [
-          '9月9日',
-          '胸加肩',
-          '哑铃飞鸟12×2×4',
-          '肌肉延迟性酸痛',
-          '胸大肌，肩前束，肱三头肌',
-          '9月6日',
-          '下肢臀腿',
-          '热身泡沫轴松解臀大肌',
-          '高脚杯深蹲12×2',
-        ].join('\n'),
-      },
-    })
-    await user.click(screen.getByRole('button', { name: '解析教练计划' }))
 
-    expect(screen.getByLabelText('训练日期')).toHaveValue('2026-09-09')
-    expect(screen.getByLabelText('训练主题')).toHaveValue('胸加肩')
-    expect(screen.getByText('已识别 2 次训练，保存时将全部导入。')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
+      '2 个动作',
+    )
+    expect(screen.getAllByText('哑铃飞鸟')).not.toHaveLength(0)
+    expect(screen.getAllByText('12×2×4')).not.toHaveLength(0)
+    await user.click(screen.getByText('训练详情'))
 
-    await user.click(screen.getByRole('button', { name: '保存训练' }))
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByText('已保存 2 次训练')).toBeInTheDocument()
-    expect(data.getSnapshot().workouts).toHaveLength(2)
-    expect(data.getSnapshot().workouts[0]).toMatchObject({
-      date: '2026-09-09',
-      focus: '胸加肩',
-      exercises: [{ name: '哑铃飞鸟', prescription: '12×2×4' }],
-      sorenessAreas: ['胸大肌', '肩前束', '肱三头肌'],
-    })
-
-    await user.click(screen.getAllByText('训练详情')[0])
-
-    expect(screen.getAllByText('哑铃飞鸟').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('12×2×4').length).toBeGreaterThan(0)
     expect(screen.getByText('胸大肌')).toBeInTheDocument()
+    expect(screen.getByText('整体强度还不错')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '编辑胸加肩' }))
+    expect(
+      screen.queryByLabelText('教练计划'),
+    ).not.toBeInTheDocument()
+    await user.clear(screen.getByLabelText('训练时长'))
+    await user.type(screen.getByLabelText('训练时长'), '70')
+    await user.click(screen.getByRole('button', { name: '保存修改' }))
+
+    expect(screen.getByText('训练已更新')).toBeInTheDocument()
+    expect(data.getSnapshot().workouts[0]).toMatchObject({
+      durationMinutes: 70,
+      exercises: [
+        { name: '哑铃飞鸟', prescription: '12×2×4' },
+        { name: '史密斯上斜推胸', prescription: '12×4' },
+      ],
+      coachNotes: ['整体强度还不错'],
+    })
   })
 })
