@@ -32,23 +32,30 @@ describe('health quick capture', () => {
     expect(screen.queryByLabelText('臀')).not.toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: '添加健康记录' })).toBeInTheDocument()
     await user.type(screen.getByLabelText('训练时长'), '45')
-    await user.type(screen.getByLabelText('训练备注'), '主项卧推')
+    fireEvent.change(screen.getByLabelText('计划'), {
+      target: { value: '哑铃飞鸟 12×4\n史密斯上斜推胸 12×4' },
+    })
     await user.click(screen.getByRole('button', { name: '保存训练' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByText('训练已保存')).toBeInTheDocument()
 
-    expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
-      '主项卧推',
-    )
+    const workoutList = screen.getByRole('list', { name: '训练记录' })
+    expect(workoutList).toHaveTextContent('哑铃飞鸟')
+    expect(workoutList).toHaveTextContent('12×4')
+    expect(workoutList).toHaveTextContent('史密斯上斜推胸')
 
     expect(data.getSnapshot().workouts[0]).toMatchObject({
       kind: 'chest',
       kinds: ['chest', 'shoulders'],
       status: 'completed',
       durationMinutes: 45,
-      notes: '主项卧推',
+      plan: ['哑铃飞鸟 12×4', '史密斯上斜推胸 12×4'],
     })
+    expect(screen.queryByLabelText('热身与准备')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('收尾')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('酸痛肌群')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('训练备注')).not.toBeInTheDocument()
     expect(screen.getByText('1 / 4')).toBeInTheDocument()
   })
 
@@ -67,7 +74,9 @@ describe('health quick capture', () => {
     await user.keyboard('{Escape}')
     await user.type(screen.getByLabelText('训练时长'), '45')
     await user.type(screen.getByLabelText('训练主题'), '胸加肩')
-    await user.type(screen.getByLabelText('训练备注'), '原始备注')
+    fireEvent.change(screen.getByLabelText('计划'), {
+      target: { value: '哑铃飞鸟 12×4' },
+    })
     await user.click(screen.getByRole('button', { name: '保存训练' }))
 
     expect(screen.getByText('训练已保存')).toBeInTheDocument()
@@ -81,7 +90,7 @@ describe('health quick capture', () => {
     expect(screen.getByLabelText('训练日期')).toHaveValue('2026-09-09')
     expect(screen.getByLabelText('训练时长')).toHaveValue(45)
     expect(screen.getByLabelText('训练主题')).toHaveValue('胸加肩')
-    expect(screen.getByLabelText('训练备注')).toHaveValue('原始备注')
+    expect(screen.getByLabelText('计划')).toHaveValue('哑铃飞鸟 12×4')
     expect(screen.getByRole('button', { name: '保存修改' })).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('训练日期'), {
@@ -89,8 +98,8 @@ describe('health quick capture', () => {
     })
     await user.clear(screen.getByLabelText('训练时长'))
     await user.type(screen.getByLabelText('训练时长'), '55')
-    await user.clear(screen.getByLabelText('训练备注'))
-    await user.type(screen.getByLabelText('训练备注'), '更新后的备注')
+    await user.clear(screen.getByLabelText('计划'))
+    await user.type(screen.getByLabelText('计划'), '高脚杯深蹲 12×3')
     await user.click(screen.getByRole('button', { name: '保存修改' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -100,11 +109,11 @@ describe('health quick capture', () => {
       id: originalId,
       date: '2026-09-10',
       durationMinutes: 55,
-      notes: '更新后的备注',
+      plan: ['高脚杯深蹲 12×3'],
     })
-    expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
-      '更新后的备注',
-    )
+    const workoutList = screen.getByRole('list', { name: '训练记录' })
+    expect(workoutList).toHaveTextContent('高脚杯深蹲')
+    expect(workoutList).toHaveTextContent('12×3')
   })
 
   it('records a health metric and updates it on the same date', async () => {
@@ -208,17 +217,12 @@ describe('health quick capture', () => {
     expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
       '2 个动作',
     )
-    expect(screen.getAllByText('哑铃飞鸟')).not.toHaveLength(0)
-    expect(screen.getAllByText('12×2×4')).not.toHaveLength(0)
-    await user.click(screen.getByText('训练详情'))
-
-    expect(screen.getByText('胸大肌')).toBeInTheDocument()
-    expect(screen.getByText('整体强度还不错')).toBeInTheDocument()
+    expect(screen.getByText('哑铃飞鸟')).toBeInTheDocument()
+    expect(screen.getByText('12×2×4')).toBeInTheDocument()
+    expect(screen.queryByText('训练详情')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '编辑胸加肩' }))
-    expect(
-      screen.queryByLabelText('教练计划'),
-    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText('计划')).toHaveValue('')
     await user.clear(screen.getByLabelText('训练时长'))
     await user.type(screen.getByLabelText('训练时长'), '70')
     await user.click(screen.getByRole('button', { name: '保存修改' }))
@@ -232,5 +236,38 @@ describe('health quick capture', () => {
       ],
       coachNotes: ['整体强度还不错'],
     })
+  })
+
+  it('shows every plan line as an exercise tag', async () => {
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    data.recordWorkout({
+      date: '2026-09-09',
+      kind: 'glutes',
+      kinds: ['glutes', 'legs'],
+      status: 'completed',
+      durationMinutes: 55,
+      notes: '',
+      focus: '下肢臀腿',
+      plan: [
+        '坐姿髋外展中立位12×4',
+        '坐姿髋外展后仰位12×4',
+        '坐姿腰带臀推12×4',
+        '哑铃硬拉12×4',
+        '高脚杯深蹲12×2',
+      ],
+    })
+    render(<App data={data} />)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: '健康' }))
+
+    expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
+      '5 个动作',
+    )
+    expect(screen.getByText('坐姿髋外展中立位')).toBeInTheDocument()
+    expect(screen.getByText('坐姿髋外展后仰位')).toBeInTheDocument()
+    expect(screen.getByText('坐姿腰带臀推')).toBeInTheDocument()
+    expect(screen.getByText('哑铃硬拉')).toBeInTheDocument()
+    expect(screen.getByText('高脚杯深蹲')).toBeInTheDocument()
+    expect(screen.queryByText('+2')).not.toBeInTheDocument()
   })
 })

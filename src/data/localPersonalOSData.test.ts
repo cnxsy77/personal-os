@@ -316,7 +316,8 @@ describe('local Personal OS data', () => {
       kinds: ['chest'],
       status: 'completed',
       durationMinutes: 45,
-      notes: ' 主项卧推 ',
+      notes: '',
+      plan: [' 哑铃飞鸟 12×4 ', ''],
     })
     data.saveHealthMetric({
       date: '2026-09-11',
@@ -337,7 +338,8 @@ describe('local Personal OS data', () => {
       kinds: ['chest'],
       status: 'completed',
       durationMinutes: 45,
-      notes: '主项卧推',
+      notes: '',
+      plan: ['哑铃飞鸟 12×4'],
     })
     expect(snapshot.healthMetrics[0]).toMatchObject({
       date: '2026-09-11',
@@ -428,6 +430,7 @@ describe('local Personal OS data', () => {
       status: 'completed',
       durationMinutes: 35,
       notes: ' 更新后的备注 ',
+      plan: [' 高脚杯深蹲 12×3 ', ''],
       exercises: [{ name: ' 高脚杯深蹲 ', prescription: '12×2' }],
     })
 
@@ -443,6 +446,7 @@ describe('local Personal OS data', () => {
       status: 'completed',
       durationMinutes: 35,
       notes: '更新后的备注',
+      plan: ['高脚杯深蹲 12×3'],
       exercises: [{ name: '高脚杯深蹲', prescription: '12×2' }],
     })
   })

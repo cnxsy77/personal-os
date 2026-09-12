@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Dumbbell,
   HeartPulse,
-  ListChecks,
   Pencil,
   Plus,
   Timer,
@@ -51,6 +50,7 @@ import {
   type WorkoutModeFilter,
 } from '../utils/healthViews'
 import { formatStudyDuration, toDateKey } from '../utils/study'
+import { getWorkoutExercises } from '../utils/workoutPlanTags'
 import './HealthQuickRecord.css'
 
 type Props = {
@@ -111,11 +111,8 @@ export function HealthQuickRecord({
     SelectableWorkoutKind[]
   >([])
   const [duration, setDuration] = useState('')
-  const [notes, setNotes] = useState('')
+  const [planText, setPlanText] = useState('')
   const [focus, setFocus] = useState('')
-  const [warmupText, setWarmupText] = useState('')
-  const [finisherText, setFinisherText] = useState('')
-  const [sorenessText, setSorenessText] = useState('')
   const [menstruationFlow, setMenstruationFlow] =
     useState<MenstruationFlow>('none')
   const [menstruationSymptoms, setMenstruationSymptoms] = useState<
@@ -195,10 +192,7 @@ export function HealthQuickRecord({
     )
     setDuration(String(workout.durationMinutes || ''))
     setFocus(workout.focus ?? '')
-    setWarmupText((workout.warmup ?? []).join('\n'))
-    setFinisherText((workout.finisher ?? []).join('\n'))
-    setSorenessText((workout.sorenessAreas ?? []).join('，'))
-    setNotes(workout.notes)
+    setPlanText((workout.plan ?? []).join('\n'))
     setWorkoutError('')
     onDialogOpen('workout')
   }
@@ -222,12 +216,13 @@ export function HealthQuickRecord({
       kinds: selectedWorkoutKinds,
       status: 'completed',
       durationMinutes: Number(duration),
-      notes,
+      notes: editingWorkout?.notes ?? '',
+      plan: splitLines(planText),
       focus: focus || undefined,
-      warmup: splitLines(warmupText),
+      warmup: editingWorkout?.warmup,
       exercises: editingWorkout?.exercises,
-      finisher: splitLines(finisherText),
-      sorenessAreas: splitSorenessAreas(sorenessText),
+      finisher: editingWorkout?.finisher,
+      sorenessAreas: editingWorkout?.sorenessAreas,
       coachNotes: editingWorkout?.coachNotes,
     }
   }
@@ -268,12 +263,9 @@ export function HealthQuickRecord({
       onWorkoutSubmit(workoutInput)
     }
 
-    setNotes('')
+    setPlanText('')
     setDuration('')
     setFocus('')
-    setWarmupText('')
-    setFinisherText('')
-    setSorenessText('')
     setWorkoutError('')
     setEditingWorkout(null)
     closeDialog()
@@ -451,42 +443,14 @@ export function HealthQuickRecord({
                 placeholder="胸加肩"
               />
             </div>
-            <div className="form-field-half">
-              <label htmlFor="workout-warmup">热身与准备</label>
+            <div className="form-field-full">
+              <label htmlFor="workout-plan">计划</label>
               <textarea
-                id="workout-warmup"
-                value={warmupText}
-                onChange={(event) => setWarmupText(event.target.value)}
-                placeholder="泡沫轴松解背部"
-                rows={3}
-              />
-            </div>
-            <div className="form-field-half">
-              <label htmlFor="workout-finisher">收尾</label>
-              <textarea
-                id="workout-finisher"
-                value={finisherText}
-                onChange={(event) => setFinisherText(event.target.value)}
-                placeholder="核心收尾"
-                rows={3}
-              />
-            </div>
-            <div>
-              <label htmlFor="workout-soreness">酸痛肌群</label>
-              <input
-                id="workout-soreness"
-                value={sorenessText}
-                onChange={(event) => setSorenessText(event.target.value)}
-                placeholder="胸大肌，肩前束"
-              />
-            </div>
-            <div>
-              <label htmlFor="workout-notes">训练备注</label>
-              <input
-                id="workout-notes"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="主项卧推"
+                id="workout-plan"
+                value={planText}
+                onChange={(event) => setPlanText(event.target.value)}
+                placeholder={'哑铃飞鸟 12×4\n高脚杯深蹲 12×3'}
+                rows={8}
               />
             </div>
             <button type="submit">
@@ -721,6 +685,7 @@ export function HealthQuickRecord({
           {visibleWorkouts.map((workout) => {
             const modes = getWorkoutModes(workout)
             const kinds = workout.kinds?.length ? workout.kinds : [workout.kind]
+            const exercises = getWorkoutExercises(workout)
 
             return (
               <li
@@ -747,14 +712,14 @@ export function HealthQuickRecord({
                   </div>
                   <p className="record-meta">
                     {kinds.map((kind) => workoutKindLabels[kind]).join(' / ')} ·{' '}
-                    {workout.exercises?.length
-                      ? `${workout.exercises.length} 个动作`
+                    {exercises.length
+                      ? `${exercises.length} 个动作`
                       : '自由训练'}{' '}
                     · {formatStudyDuration(workout.durationMinutes)}
                   </p>
-                  {workout.exercises?.length ? (
+                  {exercises.length ? (
                     <p className="exercise-line">
-                      {workout.exercises.slice(0, 3).map((exercise, index) => (
+                      {exercises.map((exercise, index) => (
                         <span key={`${exercise.name}-${index}`}>
                           <b>{exercise.name}</b>
                           {exercise.prescription ? (
@@ -762,82 +727,9 @@ export function HealthQuickRecord({
                           ) : null}
                         </span>
                       ))}
-                      {workout.exercises.length > 3 ? (
-                        <span className="more">
-                          +{workout.exercises.length - 3}
-                        </span>
-                      ) : null}
                     </p>
                   ) : workout.notes ? (
                     <p className="record-note">{workout.notes}</p>
-                  ) : null}
-                  {hasWorkoutPlan(workout) ? (
-                    <details className="workout-plan">
-                      <summary>
-                        <ListChecks size={15} />
-                        训练详情
-                      </summary>
-                      <div>
-                        {workout.warmup?.length ? (
-                          <section>
-                            <h5>热身与准备</h5>
-                            <ul>
-                              {workout.warmup.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
-                            </ul>
-                          </section>
-                        ) : null}
-                        {workout.exercises?.length ? (
-                          <section>
-                            <h5>动作安排</h5>
-                            <ul>
-                              {workout.exercises.map((exercise, index) => (
-                                <li key={`${exercise.name}-${index}`}>
-                                  <span>{exercise.name}</span>
-                                  {exercise.prescription ? (
-                                    <code>{exercise.prescription}</code>
-                                  ) : null}
-                                  {exercise.target ? (
-                                    <small>{exercise.target}</small>
-                                  ) : null}
-                                </li>
-                              ))}
-                            </ul>
-                          </section>
-                        ) : null}
-                        {workout.finisher?.length ? (
-                          <section>
-                            <h5>收尾</h5>
-                            <ul>
-                              {workout.finisher.map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
-                            </ul>
-                          </section>
-                        ) : null}
-                        {workout.sorenessAreas?.length ? (
-                          <section>
-                            <h5>延迟性酸痛</h5>
-                            <div className="soreness-tags">
-                              {workout.sorenessAreas.map((area) => (
-                                <span key={area}>{area}</span>
-                              ))}
-                            </div>
-                          </section>
-                        ) : null}
-                        {workout.coachNotes?.length ? (
-                          <section>
-                            <h5>教练点评</h5>
-                            <ul>
-                              {workout.coachNotes.map((note) => (
-                                <li key={note}>{note}</li>
-                              ))}
-                            </ul>
-                          </section>
-                        ) : null}
-                      </div>
-                    </details>
                   ) : null}
                 </div>
                 <div className="workout-detail">
@@ -975,23 +867,6 @@ function splitLines(value: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
-}
-
-function splitSorenessAreas(value: string) {
-  return value
-    .split(/[,，、/]+/)
-    .map((area) => area.trim())
-    .filter(Boolean)
-}
-
-function hasWorkoutPlan(workout: Workout) {
-  return Boolean(
-    workout.warmup?.length ||
-      workout.exercises?.length ||
-      workout.finisher?.length ||
-      workout.sorenessAreas?.length ||
-      workout.coachNotes?.length,
-  )
 }
 
 function isSelectableWorkoutKind(

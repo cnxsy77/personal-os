@@ -341,6 +341,12 @@ export function createLocalPersonalOSData(
       workout.exercises = exercises
     }
 
+    const plan = cleanStringArray(input.plan)
+
+    if (plan.length > 0) {
+      workout.plan = plan
+    }
+
     const finisher = cleanStringArray(input.finisher)
 
     if (finisher.length > 0) {
@@ -796,6 +802,7 @@ function isWorkout(value: unknown): value is Workout {
     value.durationMinutes <= 600 &&
     typeof value.notes === 'string'
   ) && (
+    (value.plan === undefined || isStringArray(value.plan)) &&
     (value.focus === undefined ||
       (typeof value.focus === 'string' && value.focus.trim().length > 0)) &&
     (value.warmup === undefined || isStringArray(value.warmup)) &&

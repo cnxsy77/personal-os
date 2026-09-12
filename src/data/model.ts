@@ -127,6 +127,7 @@ export type Workout = {
   status?: WorkoutStatus
   durationMinutes: number
   notes: string
+  plan?: string[]
   focus?: string
   warmup?: string[]
   exercises?: WorkoutExercise[]
