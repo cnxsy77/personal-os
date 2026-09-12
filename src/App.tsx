@@ -5,6 +5,7 @@ import {
   FolderGit2,
   LayoutDashboard,
   Plus,
+  Settings,
   Target,
   Wallet,
 } from 'lucide-react'
@@ -12,6 +13,7 @@ import { createLocalPersonalOSData } from './data/localPersonalOSData'
 import type { PersonalOSData } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
 import { RecordDialog } from './components/RecordDialog'
+import { SettingsDrawer } from './components/SettingsDrawer'
 import { Toast } from './components/Toast'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
 import { HealthQuickRecord } from './features/HealthQuickRecord'
@@ -22,19 +24,27 @@ import { OverviewConsole } from './features/OverviewConsole'
 import './App.css'
 import './globalScale.css'
 
+type PageId =
+  | 'overview'
+  | 'plan'
+  | 'health'
+  | 'finance'
+  | 'learning'
+  | 'workbench'
+
 const menu = [
-  [LayoutDashboard, '概览'],
-  [Target, '计划'],
-  [Dumbbell, '健康'],
-  [Wallet, '财务'],
-  [BookOpen, '学习'],
-  [FolderGit2, '工作台'],
+  [LayoutDashboard, 'overview', '概览'],
+  [Target, 'plan', '计划'],
+  [Dumbbell, 'health', '锻炼'],
+  [Wallet, 'finance', '记账'],
+  [BookOpen, 'learning', '学习'],
+  [FolderGit2, 'workbench', '工作台'],
 ] as const
 
 const domainChoices = [
   [Target, 'plan', '计划', 'task'],
-  [Dumbbell, 'health', '健康', 'workout'],
-  [Wallet, 'finance', '财务', 'transaction'],
+  [Dumbbell, 'health', '锻炼', 'workout'],
+  [Wallet, 'finance', '记账', 'transaction'],
   [BookOpen, 'learning', '学习', 'log'],
   [FolderGit2, 'workbench', '工作台', 'project'],
 ] as const
@@ -52,11 +62,21 @@ type AppProps = {
   data?: PersonalOSData
 }
 
+const pageTitles: Record<PageId, string> = {
+  overview: '概览',
+  plan: '计划',
+  health: '锻炼',
+  finance: '记账',
+  learning: '学习',
+  workbench: '工作台',
+}
+
 export default function App({ data = defaultData }: AppProps) {
-  const [active, setActive] = useState('概览')
+  const [active, setActive] = useState<PageId>('overview')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [quickRecord, setQuickRecord] = useState<QuickRecordTarget | null>(null)
   const [domainPickerOpen, setDomainPickerOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const toastTimerRef = useRef<number | undefined>(undefined)
   const state = usePersonalOSData(data)
@@ -85,12 +105,20 @@ export default function App({ data = defaultData }: AppProps) {
     }, 3000)
   }, [])
 
-  function selectPage(name: string) {
-    setActive(name)
+  function selectPage(page: PageId) {
+    setActive(page)
     setQuickRecord(null)
     setDomainPickerOpen(false)
+    setSettingsOpen(false)
     setMobileOpen(false)
   }
+
+  useEffect(() => {
+    document.documentElement.dataset.fontScale = state.settings.fontScale
+    document.documentElement.dataset.reducedMotion = String(
+      state.settings.reducedMotion,
+    )
+  }, [state.settings.fontScale, state.settings.reducedMotion])
 
   useEffect(() => {
     return () => window.clearTimeout(toastTimerRef.current)
@@ -104,12 +132,12 @@ export default function App({ data = defaultData }: AppProps) {
           <strong>Personal OS</strong>
         </div>
         <nav aria-label="主菜单">
-          {menu.map(([Icon, name]) => (
+          {menu.map(([Icon, page, name]) => (
             <button
               key={name}
-              onClick={() => selectPage(name)}
-              className={active === name ? 'active' : ''}
-              aria-current={active === name ? 'page' : undefined}
+              onClick={() => selectPage(page)}
+              className={active === page ? 'active' : ''}
+              aria-current={active === page ? 'page' : undefined}
             >
               <Icon size={18} />
               <span>{name}</span>
@@ -131,32 +159,45 @@ export default function App({ data = defaultData }: AppProps) {
           </button>
           <div>
             <label>{formatToday()}</label>
-            <h1>{active === '概览' ? '早上好，xqx。' : active}</h1>
+            <h1>
+              {active === 'overview' ? '早上好，xqx。' : pageTitles[active]}
+            </h1>
           </div>
-          <button
-            className="add"
-            onClick={() => {
-              if (active === '概览') {
-                setDomainPickerOpen(true)
-              } else if (active === '计划') {
-                openQuickRecord('plan', 'task')
-              } else if (active === '健康') {
-                openQuickRecord('health', 'workout')
-              } else if (active === '财务') {
-                openQuickRecord('finance', 'transaction')
-              } else if (active === '学习') {
-                openQuickRecord('learning', 'log')
-              } else if (active === '工作台') {
-                openQuickRecord('workbench', 'project')
-              }
-            }}
-          >
-            <Plus size={16} />
-            快速记录
-          </button>
+          <div className="header-actions">
+            <button
+              aria-label="设置"
+              className="icon-action"
+              onClick={() => setSettingsOpen(true)}
+              type="button"
+            >
+              <Settings size={17} />
+            </button>
+            <button
+              aria-label="快速记录"
+              className="add"
+              onClick={() => {
+                if (active === 'overview') {
+                  setDomainPickerOpen(true)
+                } else if (active === 'plan') {
+                  openQuickRecord('plan', 'task')
+                } else if (active === 'health') {
+                  openQuickRecord('health', 'workout')
+                } else if (active === 'finance') {
+                  openQuickRecord('finance', 'transaction')
+                } else if (active === 'learning') {
+                  openQuickRecord('learning', 'log')
+                } else {
+                  openQuickRecord('workbench', 'project')
+                }
+              }}
+            >
+              <Plus size={16} />
+              快速记录
+            </button>
+          </div>
         </header>
 
-        {active === '计划' ? (
+        {active === 'plan' ? (
           <PlanQuickRecord
             tasks={state.tasks}
             dialogOpen={quickRecord?.domain === 'plan'}
@@ -166,7 +207,7 @@ export default function App({ data = defaultData }: AppProps) {
             onTaskSubmit={data.addTask}
             onTaskToggle={data.toggleTask}
           />
-        ) : active === '财务' ? (
+        ) : active === 'finance' ? (
           <FinanceQuickRecord
             monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
@@ -177,8 +218,10 @@ export default function App({ data = defaultData }: AppProps) {
             onSaved={showSavedToast}
             onSubmit={data.recordTransaction}
             onBudgetSubmit={data.updateMonthlyBudget}
+            expenseCategories={state.settings.expenseCategories}
+            incomeCategories={state.settings.incomeCategories}
           />
-        ) : active === '学习' ? (
+        ) : active === 'learning' ? (
           <LearningQuickRecord
             studyLogs={state.studyLogs}
             learningPaths={state.learningPaths}
@@ -195,7 +238,7 @@ export default function App({ data = defaultData }: AppProps) {
             onResourceStatusChange={data.setLearningResourceStatus}
             onReviewSubmit={data.saveWeeklyReview}
           />
-        ) : active === '健康' ? (
+        ) : active === 'health' ? (
           <HealthQuickRecord
             workouts={state.workouts}
             healthMetrics={state.healthMetrics}
@@ -207,8 +250,9 @@ export default function App({ data = defaultData }: AppProps) {
             onWorkoutSubmit={data.recordWorkout}
             onWorkoutUpdate={data.updateWorkout}
             onMetricSubmit={data.saveHealthMetric}
+            weeklyWorkoutTarget={state.settings.weeklyWorkoutTarget}
           />
-        ) : active === '工作台' ? (
+        ) : active === 'workbench' ? (
           <WorkbenchQuickRecord
             projects={state.projects}
             dialogOpen={quickRecord?.domain === 'workbench'}
@@ -223,7 +267,7 @@ export default function App({ data = defaultData }: AppProps) {
           <OverviewConsole state={state} onTaskToggle={data.toggleTask} />
         )}
 
-        {active === '概览' && quickRecord?.domain === 'plan' ? (
+        {active === 'overview' && quickRecord?.domain === 'plan' ? (
           <PlanQuickRecord
             tasks={state.tasks}
             dialogOpen
@@ -236,7 +280,7 @@ export default function App({ data = defaultData }: AppProps) {
           />
         ) : null}
 
-        {active === '概览' && quickRecord?.domain === 'health' ? (
+        {active === 'overview' && quickRecord?.domain === 'health' ? (
           <HealthQuickRecord
             workouts={state.workouts}
             healthMetrics={state.healthMetrics}
@@ -249,10 +293,11 @@ export default function App({ data = defaultData }: AppProps) {
             onWorkoutSubmit={data.recordWorkout}
             onWorkoutUpdate={data.updateWorkout}
             onMetricSubmit={data.saveHealthMetric}
+            weeklyWorkoutTarget={state.settings.weeklyWorkoutTarget}
           />
         ) : null}
 
-        {active === '概览' && quickRecord?.domain === 'finance' ? (
+        {active === 'overview' && quickRecord?.domain === 'finance' ? (
           <FinanceQuickRecord
             monthlyBudgetCents={state.monthlyBudgetCents}
             transactions={state.transactions}
@@ -264,10 +309,12 @@ export default function App({ data = defaultData }: AppProps) {
             onSaved={showSavedToast}
             onSubmit={data.recordTransaction}
             onBudgetSubmit={data.updateMonthlyBudget}
+            expenseCategories={state.settings.expenseCategories}
+            incomeCategories={state.settings.incomeCategories}
           />
         ) : null}
 
-        {active === '概览' && quickRecord?.domain === 'learning' ? (
+        {active === 'overview' && quickRecord?.domain === 'learning' ? (
           <LearningQuickRecord
             studyLogs={state.studyLogs}
             learningPaths={state.learningPaths}
@@ -287,7 +334,7 @@ export default function App({ data = defaultData }: AppProps) {
           />
         ) : null}
 
-        {active === '概览' && quickRecord?.domain === 'workbench' ? (
+        {active === 'overview' && quickRecord?.domain === 'workbench' ? (
           <WorkbenchQuickRecord
             projects={state.projects}
             dialogOpen
@@ -322,6 +369,14 @@ export default function App({ data = defaultData }: AppProps) {
             ))}
           </div>
         </RecordDialog>
+
+        <SettingsDrawer
+          activePage={active}
+          onClose={() => setSettingsOpen(false)}
+          onSettingsChange={data.updateSettings}
+          open={settingsOpen}
+          settings={state.settings}
+        />
 
         {toastMessage ? <Toast message={toastMessage} /> : null}
       </section>

@@ -545,4 +545,84 @@ describe('local Personal OS data', () => {
 
     expect(data.getSnapshot()).toBe(before)
   })
+
+  it('adds settings when upgrading older saved state', () => {
+    const storage = createMemoryStorage()
+    const existing = createLocalPersonalOSData({ storage })
+    const savedState = existing.getSnapshot()
+
+    storage.setItem(
+      'personal-os:v1',
+      JSON.stringify({
+        tasks: savedState.tasks,
+        transactions: savedState.transactions,
+      }),
+    )
+
+    const migrated = createLocalPersonalOSData({ storage })
+
+    expect(migrated.getSnapshot().settings).toMatchObject({
+      weeklyWorkoutTarget: 4,
+      expenseCategories: ['餐饮', '交通', '购物', '住房', '其他'],
+      incomeCategories: ['工资', '奖金', '理财', '其他'],
+      fontScale: 'default',
+      reducedMotion: false,
+    })
+  })
+
+  it('persists settings and preserves transaction categories after removal', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.updateSettings({
+      weeklyWorkoutTarget: 5,
+      expenseCategories: ['餐饮', '宠物'],
+      incomeCategories: ['工资', '兼职'],
+      fontScale: 'large',
+      reducedMotion: true,
+    })
+
+    const reloaded = createLocalPersonalOSData({ storage })
+    expect(reloaded.getSnapshot().settings).toEqual({
+      weeklyWorkoutTarget: 5,
+      expenseCategories: ['餐饮', '宠物'],
+      incomeCategories: ['工资', '兼职'],
+      fontScale: 'large',
+      reducedMotion: true,
+    })
+
+    reloaded.recordTransaction({
+      kind: 'expense',
+      amountCents: 1200,
+      category: '交通',
+      date: '2026-09-12',
+    })
+    expect(reloaded.getSnapshot().transactions[0]).toMatchObject({
+      category: '交通',
+    })
+  })
+
+  it('rejects invalid settings without changing state', () => {
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    const before = data.getSnapshot()
+
+    expect(() => data.updateSettings({ weeklyWorkoutTarget: 0 })).toThrow(
+      '锻炼周目标必须在 1 到 14 次之间',
+    )
+    expect(() => data.updateSettings({ expenseCategories: [] })).toThrow(
+      '支出分类至少保留一项',
+    )
+    data.updateSettings({
+      expenseCategories: ['餐饮', ' 餐饮 ', ''],
+    })
+    expect(data.getSnapshot().settings.expenseCategories).toEqual(['餐饮'])
+    expect(before.settings.expenseCategories).toHaveLength(5)
+
+    const afterCategories = data.getSnapshot()
+    expect(() =>
+      data.updateSettings({ fontScale: 'huge' as never }),
+    ).toThrow('请选择有效的界面字号')
+
+    expect(data.getSnapshot()).toBe(afterCategories)
+  })
 })

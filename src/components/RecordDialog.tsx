@@ -56,6 +56,14 @@ export function RecordDialog({
       }
 
       if (event.key === 'Escape') {
+        const dropdown = panelRef.current?.querySelector(
+          '[data-dropdown-open="true"]',
+        )
+
+        if (dropdown) {
+          return
+        }
+
         event.preventDefault()
         onCloseRef.current()
       }

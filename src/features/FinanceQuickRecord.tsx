@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -8,9 +8,6 @@ import {
 import { RecordDialog } from '../components/RecordDialog'
 import type { Transaction, TransactionInput, TransactionKind } from '../data/model'
 import './FinanceQuickRecord.css'
-
-const expenseCategories = ['餐饮', '交通', '购物', '住房', '其他']
-const incomeCategories = ['工资', '奖金', '理财', '其他']
 
 type Props = {
   monthlyBudgetCents: number
@@ -23,6 +20,8 @@ type Props = {
   onSaved: (message: string) => void
   onSubmit: (input: TransactionInput) => void
   onBudgetSubmit: (monthlyBudgetCents: number) => void
+  expenseCategories: string[]
+  incomeCategories: string[]
 }
 
 export function FinanceQuickRecord({
@@ -36,6 +35,8 @@ export function FinanceQuickRecord({
   onSaved,
   onSubmit,
   onBudgetSubmit,
+  expenseCategories,
+  incomeCategories,
 }: Props) {
   const [kind, setKind] = useState<TransactionKind>('expense')
   const [amount, setAmount] = useState('')
@@ -48,6 +49,12 @@ export function FinanceQuickRecord({
   const now = new Date()
   const today = toDateKey(now)
   const categories = kind === 'expense' ? expenseCategories : incomeCategories
+
+  useEffect(() => {
+    if (!categories.includes(category)) {
+      setCategory(categories[0] ?? '')
+    }
+  }, [categories, category])
   const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const monthTransactions = transactions.filter((item) =>
     item.date.startsWith(monthPrefix),
@@ -132,7 +139,7 @@ export function FinanceQuickRecord({
         { id: 'transaction', label: '收支' },
         { id: 'budget', label: '预算' },
       ]}
-      title="添加财务记录"
+      title="添加记账记录"
     >
       {dialogTab === 'transaction' ? (
         <form onSubmit={submit} className="finance-form">

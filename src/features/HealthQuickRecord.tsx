@@ -32,7 +32,6 @@ import {
   healthConditionLabels,
   menstruationFlowLabels,
   menstruationSymptomLabels,
-  weeklyWorkoutTarget,
   workoutKindLabels,
 } from '../utils/health'
 import {
@@ -51,6 +50,7 @@ import {
 } from '../utils/healthViews'
 import { formatStudyDuration, toDateKey } from '../utils/study'
 import { getWorkoutExercises } from '../utils/workoutPlanTags'
+import { parseWorkoutPlanText } from '../utils/workoutPlanText'
 import './HealthQuickRecord.css'
 
 type Props = {
@@ -65,6 +65,7 @@ type Props = {
   onWorkoutSubmit: (input: WorkoutInput) => void
   onWorkoutUpdate: (id: string, input: WorkoutInput) => void
   onMetricSubmit: (input: HealthMetricInput) => void
+  weeklyWorkoutTarget: number
 }
 
 const workoutKinds: Array<[SelectableWorkoutKind, string]> = [
@@ -84,6 +85,9 @@ const menstruationFlows = Object.entries(menstruationFlowLabels) as Array<
 const menstruationSymptomOptions = Object.entries(
   menstruationSymptomLabels,
 ) as Array<[MenstruationSymptom, string]>
+const menstruationSelectOptions: Array<
+  [MenstruationSymptom | 'none', string]
+> = [['none', '无'], ...menstruationSymptomOptions]
 const workoutModes = Object.entries(workoutModeLabels) as Array<
   [WorkoutMode, string]
 >
@@ -104,6 +108,7 @@ export function HealthQuickRecord({
   onWorkoutSubmit,
   onWorkoutUpdate,
   onMetricSubmit,
+  weeklyWorkoutTarget,
 }: Props) {
   const now = new Date()
   const [workoutDate, setWorkoutDate] = useState(() => toDateKey(now))
@@ -115,14 +120,16 @@ export function HealthQuickRecord({
   const [focus, setFocus] = useState('')
   const [menstruationFlow, setMenstruationFlow] =
     useState<MenstruationFlow>('none')
-  const [menstruationSymptoms, setMenstruationSymptoms] = useState<
-    MenstruationSymptom[]
-  >([])
+  const [menstruationSymptom, setMenstruationSymptom] = useState<
+    MenstruationSymptom | 'none'
+  >('none')
   const [menstruationNote, setMenstruationNote] = useState('')
   const [workoutError, setWorkoutError] = useState('')
   const [workoutKindOpen, setWorkoutKindOpen] = useState(false)
+  const [symptomSelectOpen, setSymptomSelectOpen] = useState(false)
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null)
   const workoutKindRef = useRef<HTMLDivElement>(null)
+  const symptomSelectRef = useRef<HTMLDivElement>(null)
   const [metricDate, setMetricDate] = useState(() => toDateKey(now))
   const [sleepHours, setSleepHours] = useState('')
   const [weight, setWeight] = useState('')
@@ -160,28 +167,42 @@ export function HealthQuickRecord({
   const monthlyCalendar = getMonthlyWorkoutCalendar(workouts, monthKey)
 
   useEffect(() => {
-    if (!workoutKindOpen) {
-      return
-    }
-
     function handlePointerDown(event: PointerEvent) {
-      if (!workoutKindRef.current?.contains(event.target as Node)) {
+      if (
+        workoutKindOpen &&
+        !workoutKindRef.current?.contains(event.target as Node)
+      ) {
         setWorkoutKindOpen(false)
       }
+
+      if (
+        symptomSelectOpen &&
+        !symptomSelectRef.current?.contains(event.target as Node)
+      ) {
+        setSymptomSelectOpen(false)
+      }
+    }
+
+    if (workoutKindOpen || symptomSelectOpen) {
+      document.addEventListener('pointerdown', handlePointerDown)
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [workoutKindOpen])
+  }, [symptomSelectOpen, workoutKindOpen])
 
   function openDialog(tab = dialogTab) {
     setWorkoutError('')
     setMetricError('')
+    setWorkoutKindOpen(false)
+    setSymptomSelectOpen(false)
     onDialogOpen(tab)
   }
 
   function startWorkoutEdit(workout: Workout) {
     const selectedKinds = workout.kinds?.filter(isSelectableWorkoutKind) ?? []
+    const planText = (workout.plan ?? []).join('\n')
+    const parsedPlan = planText ? parseWorkoutPlanText(planText, now) : null
 
     setEditingWorkout(workout)
     setWorkoutDate(workout.date)
@@ -192,7 +213,18 @@ export function HealthQuickRecord({
     )
     setDuration(String(workout.durationMinutes || ''))
     setFocus(workout.focus ?? '')
-    setPlanText((workout.plan ?? []).join('\n'))
+    setPlanText(planText)
+    if (parsedPlan?.date) {
+      setWorkoutDate(parsedPlan.date)
+    }
+    if (parsedPlan?.kinds.length) {
+      setSelectedWorkoutKinds((current) => [
+        ...new Set([...current, ...parsedPlan.kinds]),
+      ])
+    }
+    if (parsedPlan?.focus) {
+      setFocus(parsedPlan.focus)
+    }
     setWorkoutError('')
     onDialogOpen('workout')
   }
@@ -209,18 +241,53 @@ export function HealthQuickRecord({
     )
   }
 
+  function changePlanText(value: string) {
+    setPlanText(value)
+
+    if (!value.trim()) {
+      return
+    }
+
+    const parsedPlan = parseWorkoutPlanText(value, now)
+
+    if (parsedPlan.date) {
+      setWorkoutDate(parsedPlan.date)
+    }
+
+    if (parsedPlan.kinds.length > 0) {
+      setSelectedWorkoutKinds((current) => [
+        ...new Set([...current, ...parsedPlan.kinds]),
+      ])
+    }
+
+    if (parsedPlan.focus) {
+      setFocus(parsedPlan.focus)
+    }
+  }
+
   function buildWorkoutInput(): WorkoutInput {
+    const parsedPlan = parseWorkoutPlanText(planText, now)
+
     return {
       date: workoutDate,
       kind: selectedWorkoutKinds[0],
       kinds: selectedWorkoutKinds,
       status: 'completed',
       durationMinutes: Number(duration),
-      notes: editingWorkout?.notes ?? '',
+      notes:
+        parsedPlan.notes.length > 0
+          ? parsedPlan.notes.join('\n')
+          : editingWorkout?.notes ?? '',
       plan: splitLines(planText),
       focus: focus || undefined,
-      warmup: editingWorkout?.warmup,
-      exercises: editingWorkout?.exercises,
+      warmup:
+        parsedPlan.warmup.length > 0
+          ? parsedPlan.warmup
+          : editingWorkout?.warmup,
+      exercises:
+        parsedPlan.exercises.length > 0
+          ? parsedPlan.exercises
+          : editingWorkout?.exercises,
       finisher: editingWorkout?.finisher,
       sorenessAreas: editingWorkout?.sorenessAreas,
       coachNotes: editingWorkout?.coachNotes,
@@ -230,6 +297,8 @@ export function HealthQuickRecord({
   function closeDialog() {
     setWorkoutError('')
     setMetricError('')
+    setWorkoutKindOpen(false)
+    setSymptomSelectOpen(false)
     setEditingWorkout(null)
     onDialogClose()
   }
@@ -301,18 +370,19 @@ export function HealthQuickRecord({
       weightKg: normalizedWeight,
       condition,
       menstruationFlow,
-      menstruationSymptoms,
+      menstruationSymptoms:
+        menstruationSymptom === 'none' ? [] : [menstruationSymptom],
       menstruationNote,
     })
     setSleepHours('')
     setWeight('')
     setCondition('good')
     setMenstruationFlow('none')
-    setMenstruationSymptoms([])
+    setMenstruationSymptom('none')
     setMenstruationNote('')
     setMetricError('')
     closeDialog()
-    onSaved('健康指标已保存')
+    onSaved('身体指标已保存')
   }
 
   const healthDialog = (
@@ -327,7 +397,7 @@ export function HealthQuickRecord({
         { id: 'workout', label: '训练' },
         { id: 'metric', label: '身体指标' },
       ]}
-      title={editingWorkout ? '编辑训练记录' : '添加健康记录'}
+      title={editingWorkout ? '编辑训练记录' : '添加锻炼记录'}
     >
       {dialogTab === 'workout' ? (
         <form onSubmit={submitWorkout} className="health-form">
@@ -345,6 +415,7 @@ export function HealthQuickRecord({
               <label htmlFor="workout-kind">训练类型</label>
               <div
                 className={`kind-select${workoutKindOpen ? ' open' : ''}`}
+                data-dropdown-open={workoutKindOpen ? 'true' : 'false'}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
                     event.stopPropagation()
@@ -448,7 +519,7 @@ export function HealthQuickRecord({
               <textarea
                 id="workout-plan"
                 value={planText}
-                onChange={(event) => setPlanText(event.target.value)}
+                onChange={(event) => changePlanText(event.target.value)}
                 placeholder={'哑铃飞鸟 12×4\n高脚杯深蹲 12×3'}
                 rows={8}
               />
@@ -530,29 +601,86 @@ export function HealthQuickRecord({
                 ))}
               </select>
             </div>
-            <fieldset className="symptom-selector form-field-full">
-              <legend>月经症状</legend>
-              <div>
-                {menstruationSymptomOptions.map(([value, label]) => (
-                  <label key={value} htmlFor={`menstruation-symptom-${value}`}>
-                    <input
-                      checked={menstruationSymptoms.includes(value)}
-                      id={`menstruation-symptom-${value}`}
-                      onChange={(event) =>
-                        setMenstruationSymptoms((current) =>
-                          event.target.checked
-                            ? [...current, value]
-                            : current.filter((symptom) => symptom !== value),
-                        )
-                      }
-                      type="checkbox"
-                      value={value}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
+            <div>
+              <label htmlFor="menstruation-symptom">月经症状</label>
+              <div
+                className={`kind-select${symptomSelectOpen ? ' open' : ''}`}
+                data-dropdown-open={symptomSelectOpen ? 'true' : 'false'}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.stopPropagation()
+                    event.preventDefault()
+                    setSymptomSelectOpen(false)
+                  }
+                }}
+                ref={symptomSelectRef}
+              >
+                <div
+                  aria-expanded={symptomSelectOpen}
+                  aria-label="月经症状"
+                  className="kind-trigger"
+                  id="menstruation-symptom"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSymptomSelectOpen((open) => !open)}
+                  onKeyDown={(event) => {
+                    if (
+                      (event.key === 'Enter' || event.key === ' ') &&
+                      event.target === event.currentTarget
+                    ) {
+                      event.preventDefault()
+                      setSymptomSelectOpen((open) => !open)
+                    }
+                  }}
+                >
+                  <span className="kind-tokens">
+                    <span className="kind-token" key={menstruationSymptom}>
+                      {menstruationSymptom === 'none'
+                        ? '无'
+                        : menstruationSymptomLabels[menstruationSymptom]}
+                      <button
+                        aria-label="移除月经症状"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setMenstruationSymptom('none')
+                        }}
+                        type="button"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  </span>
+                  <ChevronDown className="kind-chevron" size={17} />
+                </div>
+
+                {symptomSelectOpen ? (
+                  <ul aria-label="月经症状选项" role="group">
+                    {menstruationSelectOptions.map(([value, label]) => (
+                      <li key={value}>
+                        <label className="kind-option">
+                          <span>{label}</span>
+                          <input
+                            checked={menstruationSymptom === value}
+                            name="menstruation-symptom"
+                            onChange={() => {
+                              setMenstruationSymptom(value)
+                              setSymptomSelectOpen(false)
+                            }}
+                            type="radio"
+                            value={value}
+                          />
+                          <i className="kind-check" aria-hidden="true">
+                            {menstruationSymptom === value ? (
+                              <Check size={15} />
+                            ) : null}
+                          </i>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </div>
-            </fieldset>
+            </div>
             <div className="form-field-full">
               <label htmlFor="menstruation-note">月经备注</label>
               <input
@@ -564,7 +692,7 @@ export function HealthQuickRecord({
             </div>
             <button type="submit">
               <HeartPulse size={16} />
-              保存健康指标
+              保存身体指标
             </button>
           </div>
           {metricError ? <p role="alert">{metricError}</p> : null}
@@ -717,19 +845,34 @@ export function HealthQuickRecord({
                       : '自由训练'}{' '}
                     · {formatStudyDuration(workout.durationMinutes)}
                   </p>
+                  {workout.notes ? (
+                    <section className="record-section">
+                      <h5>备注</h5>
+                      <p>{workout.notes}</p>
+                    </section>
+                  ) : null}
+
+                  {workout.warmup?.length ? (
+                    <section className="record-section">
+                      <h5>热身</h5>
+                      <p>{workout.warmup.join('\n')}</p>
+                    </section>
+                  ) : null}
+
                   {exercises.length ? (
-                    <p className="exercise-line">
-                      {exercises.map((exercise, index) => (
-                        <span key={`${exercise.name}-${index}`}>
-                          <b>{exercise.name}</b>
-                          {exercise.prescription ? (
-                            <code>{exercise.prescription}</code>
-                          ) : null}
-                        </span>
-                      ))}
-                    </p>
-                  ) : workout.notes ? (
-                    <p className="record-note">{workout.notes}</p>
+                    <section className="record-section">
+                      <h5>力量训练</h5>
+                      <p className="exercise-line">
+                        {exercises.map((exercise, index) => (
+                          <span key={`${exercise.name}-${index}`}>
+                            <b>{exercise.name}</b>
+                            {exercise.prescription ? (
+                              <code>{exercise.prescription}</code>
+                            ) : null}
+                          </span>
+                        ))}
+                      </p>
+                    </section>
                   ) : null}
                 </div>
                 <div className="workout-detail">
@@ -811,7 +954,7 @@ export function HealthQuickRecord({
           <div className="panel-heading">
             <h2 id="metric-title">身体指标</h2>
           </div>
-          <ul aria-label="健康指标" className="metric-list">
+          <ul aria-label="身体指标" className="metric-list">
             {[...healthMetrics]
               .sort((metricA, metricB) => metricB.date.localeCompare(metricA.date))
               .slice(0, 6)

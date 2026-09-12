@@ -20,13 +20,13 @@ describe('record dialog', () => {
           { id: 'workout', label: '训练' },
           { id: 'metric', label: '身体指标' },
         ]}
-        title="添加健康记录"
+        title="添加锻炼记录"
       >
         <button type="button">保存训练</button>
       </RecordDialog>,
     )
 
-    expect(screen.getByRole('dialog', { name: '添加健康记录' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '添加锻炼记录' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '训练' })).toHaveAttribute(
       'aria-selected',
       'true',

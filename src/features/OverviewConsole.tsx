@@ -11,7 +11,6 @@ import {
 import type { PersonalOSState, Task } from '../data/model'
 import {
   getCompletedWorkoutsThisWeek,
-  weeklyWorkoutTarget,
   workoutKindLabels,
 } from '../utils/health'
 import {
@@ -59,8 +58,8 @@ const filters = Object.entries(filterLabels) as Array<[RecordFilter, string]>
 
 const domainNames: Record<OverviewRecord['domain'], string> = {
   task: '计划',
-  workout: '健康',
-  finance: '财务',
+  workout: '锻炼',
+  finance: '记账',
   learning: '学习',
   project: '工作台',
 }
@@ -75,6 +74,7 @@ export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
   const monthExpense = sumMonthExpenses(state.transactions)
   const budgetRemaining = Math.max(0, state.monthlyBudgetCents - monthExpense)
   const completedWorkouts = getCompletedWorkoutsThisWeek(state.workouts, now)
+  const weeklyWorkoutTarget = state.settings.weeklyWorkoutTarget
   const weekStudyMinutes = getRecentStudyMinutes(state.studyLogs, now)
   const todayStudyMinutes = getStudyMinutesOnDate(state.studyLogs, today)
   const records = buildRecords(state, now)
@@ -115,18 +115,18 @@ export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
         </header>
         <div className="progress-grid">
           <ProgressCard
-            label="健康进度"
+            label="锻炼进度"
             icon={<Dumbbell size={17} />}
-            domain="健康"
+            domain="锻炼"
             primary={`${completedWorkouts.length}/${weeklyWorkoutTarget}`}
             caption="本周完成训练"
             percent={Math.round((completedWorkouts.length / weeklyWorkoutTarget) * 100)}
             tone="health"
           />
           <ProgressCard
-            label="财务进度"
+            label="记账进度"
             icon={<Wallet size={17} />}
-            domain="财务"
+            domain="记账"
             primary={`${Math.round((monthExpense / state.monthlyBudgetCents) * 100)}% 已使用`}
             caption={`剩余 ${formatCents(budgetRemaining)}`}
             percent={Math.round((monthExpense / state.monthlyBudgetCents) * 100)}

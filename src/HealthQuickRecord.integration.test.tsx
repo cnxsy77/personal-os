@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from './App'
@@ -11,7 +11,7 @@ describe('health quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     fireEvent.change(screen.getByLabelText('训练日期'), {
       target: { value: '2026-09-11' },
@@ -30,7 +30,7 @@ describe('health quick capture', () => {
     expect(screen.getByRole('button', { name: '移除胸' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(screen.queryByLabelText('臀')).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: '添加健康记录' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '添加锻炼记录' })).toBeInTheDocument()
     await user.type(screen.getByLabelText('训练时长'), '45')
     fireEvent.change(screen.getByLabelText('计划'), {
       target: { value: '哑铃飞鸟 12×4\n史密斯上斜推胸 12×4' },
@@ -64,7 +64,7 @@ describe('health quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     fireEvent.change(screen.getByLabelText('训练日期'), {
       target: { value: '2026-09-09' },
@@ -121,7 +121,7 @@ describe('health quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     await user.click(screen.getByRole('tab', { name: '身体指标' }))
     fireEvent.change(screen.getByLabelText('记录日期'), {
@@ -130,16 +130,16 @@ describe('health quick capture', () => {
     await user.type(screen.getByLabelText('睡眠时长'), '7.5')
     await user.type(screen.getByLabelText('体重'), '72.4')
     await user.selectOptions(screen.getByLabelText('身体状态'), 'good')
-    await user.click(screen.getByRole('button', { name: '保存健康指标' }))
+    await user.click(screen.getByRole('button', { name: '保存身体指标' }))
 
-    expect(screen.getByRole('list', { name: '健康指标' })).toHaveTextContent(
+    expect(screen.getByRole('list', { name: '身体指标' })).toHaveTextContent(
       '2026.09.11',
     )
 
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     await user.click(screen.getByRole('tab', { name: '身体指标' }))
 
-    expect(screen.getByRole('list', { name: '健康指标' })).toHaveTextContent(
+    expect(screen.getByRole('list', { name: '身体指标' })).toHaveTextContent(
       '2026.09.11',
     )
 
@@ -149,13 +149,17 @@ describe('health quick capture', () => {
     await user.type(screen.getByLabelText('体重'), '72.2')
     await user.selectOptions(screen.getByLabelText('身体状态'), 'great')
     await user.selectOptions(screen.getByLabelText('月经流量'), 'medium')
+    expect(screen.queryByLabelText('疲劳')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '月经症状' }))
     await user.click(screen.getByLabelText('痛经'))
-    await user.click(screen.getByLabelText('疲劳'))
+    expect(screen.getByRole('button', { name: '月经症状' })).toHaveTextContent(
+      '痛经',
+    )
     await user.type(screen.getByLabelText('月经备注'), '周期第 2 天')
-    await user.click(screen.getByRole('button', { name: '保存健康指标' }))
+    await user.click(screen.getByRole('button', { name: '保存身体指标' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByText('健康指标已保存')).toBeInTheDocument()
+    expect(screen.getByText('身体指标已保存')).toBeInTheDocument()
     expect(data.getSnapshot().healthMetrics).toHaveLength(1)
     expect(data.getSnapshot().healthMetrics[0]).toMatchObject({
       date: '2026-09-11',
@@ -163,11 +167,11 @@ describe('health quick capture', () => {
       weightKg: 72.2,
       condition: 'great',
       menstruationFlow: 'medium',
-      menstruationSymptoms: ['cramps', 'fatigue'],
+      menstruationSymptoms: ['cramps'],
       menstruationNote: '周期第 2 天',
     })
-    expect(screen.getByRole('list', { name: '健康指标' })).toHaveTextContent(
-      '月经 中等 · 痛经、疲劳',
+    expect(screen.getByRole('list', { name: '身体指标' })).toHaveTextContent(
+      '月经 中等 · 痛经',
     )
   })
 
@@ -176,7 +180,7 @@ describe('health quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     await user.click(screen.getByRole('button', { name: '训练类型' }))
     await user.click(screen.getByLabelText('胸'))
@@ -185,7 +189,7 @@ describe('health quick capture', () => {
       screen.getByLabelText('训练时长').closest('form') as HTMLFormElement,
     )
 
-    expect(screen.getByRole('dialog', { name: '添加健康记录' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '添加锻炼记录' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('请输入 0 以上的训练时长')
     expect(data.getSnapshot().workouts).toHaveLength(0)
   })
@@ -212,7 +216,7 @@ describe('health quick capture', () => {
     })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '健康' }))
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
 
     expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
       '2 个动作',
@@ -258,7 +262,7 @@ describe('health quick capture', () => {
     })
     render(<App data={data} />)
 
-    await userEvent.setup().click(screen.getByRole('button', { name: '健康' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: '锻炼' }))
 
     expect(screen.getByRole('list', { name: '训练记录' })).toHaveTextContent(
       '5 个动作',
@@ -269,5 +273,58 @@ describe('health quick capture', () => {
     expect(screen.getByText('哑铃硬拉')).toBeInTheDocument()
     expect(screen.getByText('高脚杯深蹲')).toBeInTheDocument()
     expect(screen.queryByText('+2')).not.toBeInTheDocument()
+  })
+
+  it('parses a multi-day style plan into fields and record sections', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
+    await user.type(screen.getByLabelText('训练时长'), '60')
+    fireEvent.change(
+      screen.getByLabelText('计划'),
+      {
+        target: {
+          value: `9月9日 胸加肩
+热身泡沫轴松解胸部
+肩关节灵活度热身
+哑铃飞鸟12×2×4递减
+史密斯上斜推胸12×4
+肌肉延迟性酸痛
+胸大肌，肩前束`,
+        },
+      },
+    )
+
+    expect(screen.getByLabelText('训练日期')).toHaveValue('2026-09-09')
+    expect(screen.getByLabelText('训练主题')).toHaveValue('胸加肩')
+    expect(screen.getByRole('button', { name: '训练类型' })).toHaveTextContent(
+      '肩',
+    )
+    expect(screen.getByRole('button', { name: '训练类型' })).toHaveTextContent(
+      '胸',
+    )
+    await user.click(screen.getByRole('button', { name: '保存训练' }))
+
+    const workoutList = screen.getByRole('list', { name: '训练记录' })
+    expect(within(workoutList).getByText('备注')).toBeInTheDocument()
+    expect(within(workoutList).getByText('热身')).toBeInTheDocument()
+    expect(within(workoutList).getByText('力量训练')).toBeInTheDocument()
+    expect(workoutList).toHaveTextContent('肌肉延迟性酸痛')
+    expect(within(workoutList).getByText('哑铃飞鸟')).toBeInTheDocument()
+    expect(within(workoutList).getByText('史密斯上斜推胸')).toBeInTheDocument()
+    expect(data.getSnapshot().workouts[0]).toMatchObject({
+      date: '2026-09-09',
+      kinds: ['shoulders', 'chest'],
+      focus: '胸加肩',
+      warmup: ['热身泡沫轴松解胸部', '肩关节灵活度热身'],
+      notes: '肌肉延迟性酸痛\n胸大肌，肩前束',
+      exercises: [
+        { name: '哑铃飞鸟', prescription: '12×2×4', target: '递减' },
+        { name: '史密斯上斜推胸', prescription: '12×4' },
+      ],
+    })
   })
 })

@@ -22,8 +22,8 @@ describe('OverviewConsole', () => {
     expect(screen.getByText('¥964')).toBeInTheDocument()
     expect(screen.getAllByText('45 分钟')).toHaveLength(2)
 
-    expect(screen.getByLabelText('健康进度')).toHaveTextContent('0/4')
-    expect(screen.getByLabelText('财务进度')).toHaveTextContent('4% 已使用')
+    expect(screen.getByLabelText('锻炼进度')).toHaveTextContent('0/4')
+    expect(screen.getByLabelText('记账进度')).toHaveTextContent('4% 已使用')
     expect(screen.getByLabelText('学习进度')).toHaveTextContent('4% 平均进度')
     expect(screen.getByLabelText('工作台进度')).toHaveTextContent('0/1 项目已完成')
   })

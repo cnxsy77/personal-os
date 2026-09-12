@@ -44,4 +44,39 @@ describe('Personal OS dashboard', () => {
     expect(within(table).getByText('同步个人记录')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: '已完成 0 / 4' })).toBeInTheDocument()
   })
+
+  it('opens settings, applies global preferences, and manages finance categories', async () => {
+    const user = userEvent.setup()
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '记账' }))
+    await user.click(screen.getByRole('button', { name: '设置' }))
+
+    expect(screen.getByRole('dialog', { name: '设置' })).toBeInTheDocument()
+    expect(screen.getByText('当前页面：记账')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('新增分类'), '咖啡')
+    await user.click(screen.getByRole('button', { name: '添加' }))
+    expect(data.getSnapshot().settings.expenseCategories).toContain('咖啡')
+
+    await user.click(screen.getByRole('button', { name: '大' }))
+    expect(data.getSnapshot().settings.fontScale).toBe('large')
+    expect(document.documentElement.dataset.fontScale).toBe('large')
+
+    await user.click(screen.getByRole('checkbox', { name: '减少动态效果' }))
+    expect(data.getSnapshot().settings.reducedMotion).toBe(true)
+    expect(document.documentElement.dataset.reducedMotion).toBe('true')
+
+    const savedSettings = JSON.parse(
+      storage.getItem('personal-os:v1') as string,
+    ).settings
+    expect(savedSettings.expenseCategories).toContain('咖啡')
+
+    await user.click(screen.getByRole('button', { name: '关闭设置' }))
+    await user.click(screen.getByRole('button', { name: '快速记录' }))
+    await user.selectOptions(screen.getByLabelText('分类'), '咖啡')
+    expect(screen.getByLabelText('分类')).toHaveValue('咖啡')
+  })
 })

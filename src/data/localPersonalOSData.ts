@@ -11,6 +11,8 @@ import type {
   MenstruationSymptom,
   PersonalOSData,
   PersonalOSState,
+  PersonalOSSettings,
+  PersonalOSSettingsInput,
   Project,
   ProjectInput,
   ProjectStatus,
@@ -30,6 +32,7 @@ import type {
   WorkoutStatus,
   SelectableWorkoutKind,
 } from './model'
+import { defaultPersonalOSSettings } from '../utils/settings'
 
 const storageKey = 'personal-os:v1'
 
@@ -481,6 +484,54 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function updateSettings(input: PersonalOSSettingsInput) {
+    const nextSettings: PersonalOSSettings = { ...state.settings }
+
+    if (input.weeklyWorkoutTarget !== undefined) {
+      if (
+        !Number.isInteger(input.weeklyWorkoutTarget) ||
+        input.weeklyWorkoutTarget < 1 ||
+        input.weeklyWorkoutTarget > 14
+      ) {
+        throw new Error('锻炼周目标必须在 1 到 14 次之间')
+      }
+
+      nextSettings.weeklyWorkoutTarget = input.weeklyWorkoutTarget
+    }
+
+    if (input.expenseCategories !== undefined) {
+      nextSettings.expenseCategories = normalizeCategoryInput(
+        input.expenseCategories,
+        '支出分类',
+      )
+    }
+
+    if (input.incomeCategories !== undefined) {
+      nextSettings.incomeCategories = normalizeCategoryInput(
+        input.incomeCategories,
+        '收入分类',
+      )
+    }
+
+    if (input.fontScale !== undefined) {
+      if (
+        input.fontScale !== 'default' &&
+        input.fontScale !== 'large' &&
+        input.fontScale !== 'xlarge'
+      ) {
+        throw new Error('请选择有效的界面字号')
+      }
+
+      nextSettings.fontScale = input.fontScale
+    }
+
+    if (input.reducedMotion !== undefined) {
+      nextSettings.reducedMotion = input.reducedMotion
+    }
+
+    commit({ ...state, settings: nextSettings })
+  }
+
   return {
     subscribe,
     getSnapshot,
@@ -500,6 +551,7 @@ export function createLocalPersonalOSData(
     updateWorkout,
     setWorkoutStatus,
     saveHealthMetric,
+    updateSettings,
   }
 }
 
@@ -582,6 +634,7 @@ function createSeedState(now: Date): PersonalOSState {
     weeklyReviews: [],
     workouts: [],
     healthMetrics: [],
+    settings: defaultPersonalOSSettings,
   }
 }
 
@@ -639,7 +692,72 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
     healthMetrics: Array.isArray(value.healthMetrics)
       ? value.healthMetrics.filter(isHealthMetric)
       : [],
+    settings: normalizeSettings(value.settings, fallback.settings),
   }
+}
+
+function normalizeSettings(
+  value: unknown,
+  fallback: PersonalOSSettings,
+): PersonalOSSettings {
+  if (!isRecord(value)) {
+    return fallback
+  }
+
+  return {
+    weeklyWorkoutTarget:
+      typeof value.weeklyWorkoutTarget === 'number' &&
+      Number.isInteger(value.weeklyWorkoutTarget) &&
+      value.weeklyWorkoutTarget >= 1 &&
+      value.weeklyWorkoutTarget <= 14
+        ? value.weeklyWorkoutTarget
+        : fallback.weeklyWorkoutTarget,
+    expenseCategories: normalizeSavedCategories(
+      value.expenseCategories,
+      fallback.expenseCategories,
+    ),
+    incomeCategories: normalizeSavedCategories(
+      value.incomeCategories,
+      fallback.incomeCategories,
+    ),
+    fontScale:
+      value.fontScale === 'default' ||
+      value.fontScale === 'large' ||
+      value.fontScale === 'xlarge'
+        ? value.fontScale
+        : fallback.fontScale,
+    reducedMotion:
+      typeof value.reducedMotion === 'boolean'
+        ? value.reducedMotion
+        : fallback.reducedMotion,
+  }
+}
+
+function normalizeSavedCategories(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+    return fallback
+  }
+
+  const categories = [...new Set(value.map((item) => item.trim()))].filter(
+    Boolean,
+  )
+  return categories.length > 0 ? categories : fallback
+}
+
+function normalizeCategoryInput(value: string[], label: string) {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+    throw new Error(`${label}格式无效`)
+  }
+
+  const categories = [...new Set(value.map((item) => item.trim()))].filter(
+    Boolean,
+  )
+
+  if (categories.length === 0) {
+    throw new Error(`${label}至少保留一项`)
+  }
+
+  return categories
 }
 
 function isTask(value: unknown): value is Task {

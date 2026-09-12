@@ -1,0 +1,238 @@
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(11, 15, 12, 0.68);
+  backdrop-filter: blur(5px);
+}
+
+.settings-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  border-left: 1px solid #3c4c41;
+  background: #171f1a;
+  box-shadow: -22px 0 70px rgba(0, 0, 0, 0.36);
+}
+
+.settings-drawer:focus {
+  outline: none;
+}
+
+.settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 26px 20px;
+  border-bottom: 1px solid #303c34;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.8px;
+}
+
+.settings-header p {
+  margin: 8px 0 0;
+  color: #93a095;
+  font-size: 14px;
+}
+
+.settings-header button {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  min-height: 42px;
+  border: 1px solid #3c4c41;
+  border-radius: 11px;
+  background: #1d2620;
+  color: #eaf0ea;
+  cursor: pointer;
+}
+
+.settings-body {
+  flex: 1;
+  display: grid;
+  align-content: start;
+  gap: 28px;
+  padding: 24px 26px max(28px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+.settings-body h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+}
+
+.settings-card {
+  display: grid;
+  gap: 15px;
+  padding: 20px;
+  border: 1px solid #303c34;
+  border-radius: 15px;
+  background: #1b241f;
+}
+
+.settings-card p {
+  margin: 0;
+  color: #9fac9f;
+  font-size: 14px;
+}
+
+.settings-segmented {
+  display: inline-grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 11px;
+  background: #121914;
+}
+
+.settings-segmented button {
+  min-width: 76px;
+  min-height: 41px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #90a092;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.settings-segmented button.selected {
+  background: #293c29;
+  color: #d8fa71;
+}
+
+.settings-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.settings-add label {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.settings-add input {
+  width: 100%;
+  min-height: 47px;
+  padding: 0 13px;
+  border: 1px solid #3d4b41;
+  border-radius: 10px;
+  background: #111713;
+  color: #eaf0ea;
+  font: inherit;
+}
+
+.settings-add button {
+  min-height: 47px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #d8fa71;
+  color: #182118;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-card li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid #2b382f;
+  border-radius: 10px;
+  background: #19201c;
+}
+
+.settings-card li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-card li button {
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #465750;
+  border-radius: 8px;
+  background: transparent;
+  color: #d5ded5;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-card fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings-card legend {
+  padding: 0;
+  margin-bottom: 9px;
+  color: #93a095;
+  font-family: "DM Mono", monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+}
+
+.settings-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #dbe3db;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.settings-switch input {
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  accent-color: #d8fa71;
+}
+
+.settings-card [role='alert'] {
+  margin: 0;
+  color: #ff9a8b;
+  font-size: 13.5px;
+}
+
+.settings-hint {
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .settings-header {
+    padding: 22px 18px 16px;
+  }
+
+  .settings-body {
+    padding-inline: 18px;
+  }
+}

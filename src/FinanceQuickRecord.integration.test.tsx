@@ -11,7 +11,7 @@ describe('finance quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '财务' }))
+    await user.click(screen.getByRole('button', { name: '记账' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     await user.type(screen.getByLabelText('金额'), '12.5')
     await user.selectOptions(screen.getByLabelText('分类'), '交通')
@@ -35,7 +35,7 @@ describe('finance quick capture', () => {
 
     await user.click(screen.getByRole('button', { name: '概览' }))
     expect(screen.getByText('¥951.50')).toBeInTheDocument()
-    expect(screen.getByLabelText('财务进度')).toHaveTextContent('5% 已使用')
+    expect(screen.getByLabelText('记账进度')).toHaveTextContent('5% 已使用')
 
     const snapshot = data.getSnapshot()
     const expenseTotal = snapshot.transactions
@@ -50,7 +50,7 @@ describe('finance quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '财务' }))
+    await user.click(screen.getByRole('button', { name: '记账' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     await user.click(screen.getByRole('tab', { name: '预算' }))
     await user.clear(screen.getByLabelText('设置预算'))
@@ -68,12 +68,12 @@ describe('finance quick capture', () => {
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
     render(<App data={data} />)
 
-    await user.click(screen.getByRole('button', { name: '财务' }))
+    await user.click(screen.getByRole('button', { name: '记账' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
     fireEvent.submit(screen.getByLabelText('金额').closest('form') as HTMLFormElement)
 
     expect(
-      screen.getByRole('dialog', { name: '添加财务记录' }),
+      screen.getByRole('dialog', { name: '添加记账记录' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('请输入大于 0 的金额')
     expect(data.getSnapshot().transactions).toHaveLength(1)

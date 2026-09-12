@@ -42,6 +42,18 @@ export type Transaction = {
 
 export type TransactionInput = Omit<Transaction, 'id'>
 
+export type FontScale = 'default' | 'large' | 'xlarge'
+
+export type PersonalOSSettings = {
+  weeklyWorkoutTarget: number
+  expenseCategories: string[]
+  incomeCategories: string[]
+  fontScale: FontScale
+  reducedMotion: boolean
+}
+
+export type PersonalOSSettingsInput = Partial<PersonalOSSettings>
+
 export type StudyLog = {
   id: string
   topic: string
@@ -164,6 +176,7 @@ export type PersonalOSState = {
   weeklyReviews: WeeklyReview[]
   workouts: Workout[]
   healthMetrics: HealthMetric[]
+  settings: PersonalOSSettings
 }
 
 export type PersonalOSData = {
@@ -185,4 +198,5 @@ export type PersonalOSData = {
   updateWorkout: (id: string, input: WorkoutInput) => void
   setWorkoutStatus: (id: string, status: WorkoutStatus) => void
   saveHealthMetric: (input: HealthMetricInput) => void
+  updateSettings: (input: PersonalOSSettingsInput) => void
 }
