@@ -100,6 +100,7 @@ describe('health quick capture', () => {
     await user.type(screen.getByLabelText('训练时长'), '55')
     await user.clear(screen.getByLabelText('计划'))
     await user.type(screen.getByLabelText('计划'), '高脚杯深蹲 12×3')
+    await user.click(screen.getByRole('button', { name: '识别' }))
     await user.click(screen.getByRole('button', { name: '保存修改' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -149,11 +150,14 @@ describe('health quick capture', () => {
     await user.type(screen.getByLabelText('体重'), '72.2')
     await user.selectOptions(screen.getByLabelText('身体状态'), 'great')
     await user.selectOptions(screen.getByLabelText('月经流量'), 'medium')
-    expect(screen.queryByLabelText('疲劳')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '月经症状' }))
     await user.click(screen.getByLabelText('痛经'))
+    await user.click(screen.getByLabelText('疲劳'))
     expect(screen.getByRole('button', { name: '月经症状' })).toHaveTextContent(
       '痛经',
+    )
+    expect(screen.getByRole('button', { name: '月经症状' })).toHaveTextContent(
+      '疲劳',
     )
     await user.type(screen.getByLabelText('月经备注'), '周期第 2 天')
     await user.click(screen.getByRole('button', { name: '保存身体指标' }))
@@ -167,11 +171,11 @@ describe('health quick capture', () => {
       weightKg: 72.2,
       condition: 'great',
       menstruationFlow: 'medium',
-      menstruationSymptoms: ['cramps'],
+      menstruationSymptoms: ['cramps', 'fatigue'],
       menstruationNote: '周期第 2 天',
     })
     expect(screen.getByRole('list', { name: '身体指标' })).toHaveTextContent(
-      '月经 中等 · 痛经',
+      '月经 中等 · 痛经、疲劳',
     )
   })
 
@@ -295,8 +299,10 @@ describe('health quick capture', () => {
 肌肉延迟性酸痛
 胸大肌，肩前束`,
         },
-      },
+    },
     )
+
+    await user.click(screen.getByRole('button', { name: '识别' }))
 
     expect(screen.getByLabelText('训练日期')).toHaveValue('2026-09-09')
     expect(screen.getByLabelText('训练主题')).toHaveValue('胸加肩')
@@ -306,6 +312,43 @@ describe('health quick capture', () => {
     expect(screen.getByRole('button', { name: '训练类型' })).toHaveTextContent(
       '胸',
     )
+    expect(screen.getByLabelText('动作 1 名称')).toHaveValue('哑铃飞鸟')
+    expect(screen.getByLabelText('动作 1 备注')).toHaveValue('12×2×4')
+    expect(screen.getByLabelText('动作 2 名称')).toHaveValue('史密斯上斜推胸')
+    expect(screen.getByLabelText('热身')).toHaveValue(
+      '热身泡沫轴松解胸部\n肩关节灵活度热身',
+    )
+    expect(
+      screen.getByLabelText('备注', { selector: '#workout-notes' }),
+    ).toHaveValue('肌肉延迟性酸痛\n胸大肌，肩前束')
+    await user.clear(screen.getByLabelText('动作 1 名称'))
+    await user.type(screen.getByLabelText('动作 1 名称'), '哑铃飞鸟变式')
+    await user.clear(screen.getByLabelText('动作 1 备注'))
+    await user.type(screen.getByLabelText('动作 1 备注'), '15×5')
+    await user.type(screen.getByLabelText('动作'), '高脚杯深蹲')
+    await user.keyboard('{Enter}')
+    expect(screen.getByLabelText('动作 3 名称')).toHaveValue('高脚杯深蹲')
+    expect(screen.getByLabelText('动作 3 备注')).toHaveValue('12×4')
+    const dragData = {
+      getData: () => '2',
+      setData: () => undefined,
+      effectAllowed: 'move' as const,
+      dropEffect: 'move' as const,
+    }
+    fireEvent.dragStart(
+      screen.getByLabelText('拖拽调整高脚杯深蹲顺序'),
+      { dataTransfer: dragData },
+    )
+    fireEvent.dragOver(
+      screen.getByLabelText('拖拽调整哑铃飞鸟变式顺序'),
+      { dataTransfer: dragData },
+    )
+    fireEvent.drop(
+      screen.getByLabelText('拖拽调整哑铃飞鸟变式顺序'),
+      { dataTransfer: dragData },
+    )
+    expect(screen.getByLabelText('动作 1 名称')).toHaveValue('高脚杯深蹲')
+    expect(screen.getByLabelText('动作 2 名称')).toHaveValue('哑铃飞鸟变式')
     await user.click(screen.getByRole('button', { name: '保存训练' }))
 
     const workoutList = screen.getByRole('list', { name: '训练记录' })
@@ -313,7 +356,9 @@ describe('health quick capture', () => {
     expect(within(workoutList).getByText('热身')).toBeInTheDocument()
     expect(within(workoutList).getByText('力量训练')).toBeInTheDocument()
     expect(workoutList).toHaveTextContent('肌肉延迟性酸痛')
-    expect(within(workoutList).getByText('哑铃飞鸟')).toBeInTheDocument()
+    expect(
+      within(workoutList).getByText('哑铃飞鸟变式'),
+    ).toBeInTheDocument()
     expect(within(workoutList).getByText('史密斯上斜推胸')).toBeInTheDocument()
     expect(data.getSnapshot().workouts[0]).toMatchObject({
       date: '2026-09-09',
@@ -322,7 +367,8 @@ describe('health quick capture', () => {
       warmup: ['热身泡沫轴松解胸部', '肩关节灵活度热身'],
       notes: '肌肉延迟性酸痛\n胸大肌，肩前束',
       exercises: [
-        { name: '哑铃飞鸟', prescription: '12×2×4', target: '递减' },
+        { name: '高脚杯深蹲', prescription: '12×4' },
+        { name: '哑铃飞鸟变式', prescription: '15×5', target: '递减' },
         { name: '史密斯上斜推胸', prescription: '12×4' },
       ],
     })

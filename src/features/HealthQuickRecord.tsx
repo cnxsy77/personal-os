@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Dumbbell,
+  GripVertical,
   HeartPulse,
   Pencil,
   Plus,
@@ -23,6 +24,7 @@ import type {
   MenstruationSymptom,
   SelectableWorkoutKind,
   Workout,
+  WorkoutExercise,
   WorkoutInput,
   WorkoutKind,
 } from '../data/model'
@@ -85,9 +87,6 @@ const menstruationFlows = Object.entries(menstruationFlowLabels) as Array<
 const menstruationSymptomOptions = Object.entries(
   menstruationSymptomLabels,
 ) as Array<[MenstruationSymptom, string]>
-const menstruationSelectOptions: Array<
-  [MenstruationSymptom | 'none', string]
-> = [['none', '无'], ...menstruationSymptomOptions]
 const workoutModes = Object.entries(workoutModeLabels) as Array<
   [WorkoutMode, string]
 >
@@ -118,11 +117,22 @@ export function HealthQuickRecord({
   const [duration, setDuration] = useState('')
   const [planText, setPlanText] = useState('')
   const [focus, setFocus] = useState('')
+  const [warmupText, setWarmupText] = useState('')
+  const [workoutNotes, setWorkoutNotes] = useState('')
+  const [exercises, setExercises] = useState<WorkoutExercise[]>([])
+  const [exerciseName, setExerciseName] = useState('')
+  const [exercisePrescription, setExercisePrescription] = useState('12×4')
+  const [exerciseDragIndex, setExerciseDragIndex] = useState<number | null>(
+    null,
+  )
+  const [exerciseDragOverIndex, setExerciseDragOverIndex] = useState<
+    number | null
+  >(null)
   const [menstruationFlow, setMenstruationFlow] =
     useState<MenstruationFlow>('none')
-  const [menstruationSymptom, setMenstruationSymptom] = useState<
-    MenstruationSymptom | 'none'
-  >('none')
+  const [menstruationSymptoms, setMenstruationSymptoms] = useState<
+    MenstruationSymptom[]
+  >([])
   const [menstruationNote, setMenstruationNote] = useState('')
   const [workoutError, setWorkoutError] = useState('')
   const [workoutKindOpen, setWorkoutKindOpen] = useState(false)
@@ -202,7 +212,6 @@ export function HealthQuickRecord({
   function startWorkoutEdit(workout: Workout) {
     const selectedKinds = workout.kinds?.filter(isSelectableWorkoutKind) ?? []
     const planText = (workout.plan ?? []).join('\n')
-    const parsedPlan = planText ? parseWorkoutPlanText(planText, now) : null
 
     setEditingWorkout(workout)
     setWorkoutDate(workout.date)
@@ -214,17 +223,9 @@ export function HealthQuickRecord({
     setDuration(String(workout.durationMinutes || ''))
     setFocus(workout.focus ?? '')
     setPlanText(planText)
-    if (parsedPlan?.date) {
-      setWorkoutDate(parsedPlan.date)
-    }
-    if (parsedPlan?.kinds.length) {
-      setSelectedWorkoutKinds((current) => [
-        ...new Set([...current, ...parsedPlan.kinds]),
-      ])
-    }
-    if (parsedPlan?.focus) {
-      setFocus(parsedPlan.focus)
-    }
+    setWarmupText((workout.warmup ?? []).join('\n'))
+    setWorkoutNotes(workout.notes ?? '')
+    setExercises(getWorkoutExercises(workout))
     setWorkoutError('')
     onDialogOpen('workout')
   }
@@ -241,53 +242,114 @@ export function HealthQuickRecord({
     )
   }
 
-  function changePlanText(value: string) {
-    setPlanText(value)
+  function toggleMenstruationSymptom(symptom: MenstruationSymptom) {
+    setMenstruationSymptoms((current) =>
+      current.includes(symptom)
+        ? current.filter((item) => item !== symptom)
+        : [...current, symptom],
+    )
+  }
 
-    if (!value.trim()) {
+  function recognizeWorkoutPlan() {
+    if (!planText.trim()) {
       return
     }
 
-    const parsedPlan = parseWorkoutPlanText(value, now)
+    const parsedPlan = parseWorkoutPlanText(planText, now)
 
     if (parsedPlan.date) {
       setWorkoutDate(parsedPlan.date)
     }
 
     if (parsedPlan.kinds.length > 0) {
-      setSelectedWorkoutKinds((current) => [
-        ...new Set([...current, ...parsedPlan.kinds]),
-      ])
+      setSelectedWorkoutKinds(parsedPlan.kinds)
     }
 
     if (parsedPlan.focus) {
       setFocus(parsedPlan.focus)
     }
+
+    setWarmupText(parsedPlan.warmup.join('\n'))
+    setWorkoutNotes(parsedPlan.notes.join('\n'))
+    setExercises(parsedPlan.exercises)
+    setExerciseDragIndex(null)
+    setExerciseDragOverIndex(null)
+    setWorkoutError('')
+  }
+
+  function addWorkoutExercise() {
+    const name = exerciseName.trim()
+    const prescription = exercisePrescription.trim()
+
+    if (!name) {
+      return
+    }
+
+    setExercises((current) => [
+      ...current,
+      {
+        name,
+        ...(prescription ? { prescription } : {}),
+      },
+    ])
+    setExerciseName('')
+    setExercisePrescription('12×4')
+    setWorkoutError('')
+  }
+
+  function updateWorkoutExercise(index: number, patch: WorkoutExercise) {
+    setExercises((current) =>
+      current.map((exercise, itemIndex) =>
+        itemIndex === index ? patch : exercise,
+      ),
+    )
+  }
+
+  function removeWorkoutExercise(index: number) {
+    setExercises((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    )
+    setExerciseDragIndex(null)
+    setExerciseDragOverIndex(null)
+  }
+
+  function moveWorkoutExercise(fromIndex: number, toIndex: number) {
+    setExercises((current) => {
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= current.length ||
+        toIndex >= current.length
+      ) {
+        return current
+      }
+
+      const next = [...current]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+
+      return next
+    })
+  }
+
+  function clearExerciseDrag() {
+    setExerciseDragIndex(null)
+    setExerciseDragOverIndex(null)
   }
 
   function buildWorkoutInput(): WorkoutInput {
-    const parsedPlan = parseWorkoutPlanText(planText, now)
-
     return {
       date: workoutDate,
       kind: selectedWorkoutKinds[0],
       kinds: selectedWorkoutKinds,
       status: 'completed',
       durationMinutes: Number(duration),
-      notes:
-        parsedPlan.notes.length > 0
-          ? parsedPlan.notes.join('\n')
-          : editingWorkout?.notes ?? '',
+      notes: workoutNotes,
       plan: splitLines(planText),
       focus: focus || undefined,
-      warmup:
-        parsedPlan.warmup.length > 0
-          ? parsedPlan.warmup
-          : editingWorkout?.warmup,
-      exercises:
-        parsedPlan.exercises.length > 0
-          ? parsedPlan.exercises
-          : editingWorkout?.exercises,
+      warmup: splitLines(warmupText),
+      exercises,
       finisher: editingWorkout?.finisher,
       sorenessAreas: editingWorkout?.sorenessAreas,
       coachNotes: editingWorkout?.coachNotes,
@@ -300,6 +362,8 @@ export function HealthQuickRecord({
     setWorkoutKindOpen(false)
     setSymptomSelectOpen(false)
     setEditingWorkout(null)
+    setExerciseDragIndex(null)
+    setExerciseDragOverIndex(null)
     onDialogClose()
   }
 
@@ -335,6 +399,13 @@ export function HealthQuickRecord({
     setPlanText('')
     setDuration('')
     setFocus('')
+    setWarmupText('')
+    setWorkoutNotes('')
+    setExercises([])
+    setExerciseDragIndex(null)
+    setExerciseDragOverIndex(null)
+    setExerciseName('')
+    setExercisePrescription('12×4')
     setWorkoutError('')
     setEditingWorkout(null)
     closeDialog()
@@ -370,15 +441,14 @@ export function HealthQuickRecord({
       weightKg: normalizedWeight,
       condition,
       menstruationFlow,
-      menstruationSymptoms:
-        menstruationSymptom === 'none' ? [] : [menstruationSymptom],
+      menstruationSymptoms,
       menstruationNote,
     })
     setSleepHours('')
     setWeight('')
     setCondition('good')
     setMenstruationFlow('none')
-    setMenstruationSymptom('none')
+    setMenstruationSymptoms([])
     setMenstruationNote('')
     setMetricError('')
     closeDialog()
@@ -519,15 +589,186 @@ export function HealthQuickRecord({
               <textarea
                 id="workout-plan"
                 value={planText}
-                onChange={(event) => changePlanText(event.target.value)}
+                onChange={(event) => setPlanText(event.target.value)}
                 placeholder={'哑铃飞鸟 12×4\n高脚杯深蹲 12×3'}
                 rows={8}
               />
+              <div className="plan-actions">
+                <button
+                  className="button-secondary"
+                  onClick={recognizeWorkoutPlan}
+                  type="button"
+                >
+                  识别
+                </button>
+              </div>
             </div>
-            <button type="submit">
-              <Dumbbell size={16} />
-              {editingWorkout ? '保存修改' : '保存训练'}
-            </button>
+            <div className="form-field-full exercise-editor">
+              <span className="field-label">力量训练</span>
+              {exercises.length ? (
+                <div aria-label="已添加动作" className="exercise-editor-tags">
+                  {exercises.map((exercise, index) => (
+                    <span
+                      className={[
+                        'exercise-tag',
+                        exerciseDragIndex === index ? 'dragging' : '',
+                        exerciseDragOverIndex === index &&
+                        exerciseDragIndex !== index
+                          ? 'drop-target'
+                          : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      key={`exercise-${index}`}
+                      onDragOver={(event) => {
+                        if (exerciseDragIndex === null) {
+                          return
+                        }
+
+                        event.preventDefault()
+                        event.dataTransfer.dropEffect = 'move'
+                        setExerciseDragOverIndex(index)
+                      }}
+                      onDragLeave={() => {
+                        if (exerciseDragOverIndex === index) {
+                          setExerciseDragOverIndex(null)
+                        }
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault()
+                        const fallbackSource = Number(
+                          event.dataTransfer.getData('text/plain'),
+                        )
+                        const sourceIndex = exerciseDragIndex ?? fallbackSource
+
+                        if (Number.isInteger(sourceIndex)) {
+                          moveWorkoutExercise(sourceIndex, index)
+                        }
+
+                        clearExerciseDrag()
+                      }}
+                    >
+                      <button
+                        aria-label={`拖拽调整${exercise.name}顺序`}
+                        className="exercise-drag-handle"
+                        draggable
+                        onDragEnd={clearExerciseDrag}
+                        onDragStart={(event) => {
+                          setExerciseDragIndex(index)
+                          setExerciseDragOverIndex(index)
+                          event.dataTransfer.setData(
+                            'text/plain',
+                            String(index),
+                          )
+                          event.dataTransfer.effectAllowed = 'move'
+                        }}
+                        type="button"
+                      >
+                        <GripVertical size={12} />
+                      </button>
+                      <input
+                        aria-label={`动作 ${index + 1} 名称`}
+                        className="exercise-tag-name"
+                        onChange={(event) =>
+                          updateWorkoutExercise(index, {
+                            ...exercise,
+                            name: event.target.value,
+                          })
+                        }
+                        placeholder="动作名称"
+                        value={exercise.name}
+                      />
+                      <input
+                        aria-label={`动作 ${index + 1} 备注`}
+                        className="exercise-tag-prescription"
+                        onChange={(event) =>
+                          updateWorkoutExercise(index, {
+                            ...exercise,
+                            prescription: event.target.value || undefined,
+                          })
+                        }
+                        placeholder="12×4"
+                        value={exercise.prescription ?? ''}
+                      />
+                      <button
+                        aria-label={`移除动作${exercise.name}`}
+                        onClick={() => removeWorkoutExercise(index)}
+                        type="button"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="exercise-editor-row">
+                <div className="exercise-name">
+                  <label htmlFor="workout-exercise-name">动作</label>
+                  <input
+                    id="workout-exercise-name"
+                    onChange={(event) => setExerciseName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addWorkoutExercise()
+                      }
+                    }}
+                    placeholder="动作名称"
+                    value={exerciseName}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="workout-exercise-prescription">备注</label>
+                  <input
+                    id="workout-exercise-prescription"
+                    onChange={(event) =>
+                      setExercisePrescription(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addWorkoutExercise()
+                      }
+                    }}
+                    placeholder="12×4、60秒、递减"
+                    value={exercisePrescription}
+                  />
+                </div>
+                <button
+                  className="button-secondary"
+                  onClick={addWorkoutExercise}
+                  type="button"
+                >
+                  添加
+                </button>
+              </div>
+            </div>
+            <div className="form-field-full">
+              <label htmlFor="workout-warmup">热身</label>
+              <textarea
+                id="workout-warmup"
+                onChange={(event) => setWarmupText(event.target.value)}
+                placeholder="泡沫轴松解、关节激活等"
+                rows={3}
+                value={warmupText}
+              />
+            </div>
+            <div className="form-field-full">
+              <label htmlFor="workout-notes">备注</label>
+              <textarea
+                id="workout-notes"
+                onChange={(event) => setWorkoutNotes(event.target.value)}
+                placeholder="身体感受、酸痛部位或其他观察"
+                rows={3}
+                value={workoutNotes}
+              />
+            </div>
+            <div className="health-actions">
+              <button type="submit">
+                <Dumbbell size={16} />
+                {editingWorkout ? '保存修改' : '保存训练'}
+              </button>
+            </div>
           </div>
           {workoutError ? <p role="alert">{workoutError}</p> : null}
         </form>
@@ -634,43 +875,44 @@ export function HealthQuickRecord({
                   }}
                 >
                   <span className="kind-tokens">
-                    <span className="kind-token" key={menstruationSymptom}>
-                      {menstruationSymptom === 'none'
-                        ? '无'
-                        : menstruationSymptomLabels[menstruationSymptom]}
-                      <button
-                        aria-label="移除月经症状"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setMenstruationSymptom('none')
-                        }}
-                        type="button"
-                      >
-                        <X size={11} />
-                      </button>
-                    </span>
+                    {menstruationSymptoms.length === 0 ? (
+                      <span className="kind-placeholder">请选择月经症状</span>
+                    ) : (
+                      menstruationSymptoms.map((symptom) => (
+                        <span className="kind-token" key={symptom}>
+                          {menstruationSymptomLabels[symptom]}
+                          <button
+                            aria-label={`移除${menstruationSymptomLabels[symptom]}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleMenstruationSymptom(symptom)
+                            }}
+                            type="button"
+                          >
+                            <X size={11} />
+                          </button>
+                        </span>
+                      ))
+                    )}
                   </span>
                   <ChevronDown className="kind-chevron" size={17} />
                 </div>
 
                 {symptomSelectOpen ? (
                   <ul aria-label="月经症状选项" role="group">
-                    {menstruationSelectOptions.map(([value, label]) => (
+                    {menstruationSymptomOptions.map(([value, label]) => (
                       <li key={value}>
                         <label className="kind-option">
                           <span>{label}</span>
                           <input
-                            checked={menstruationSymptom === value}
+                            checked={menstruationSymptoms.includes(value)}
                             name="menstruation-symptom"
-                            onChange={() => {
-                              setMenstruationSymptom(value)
-                              setSymptomSelectOpen(false)
-                            }}
-                            type="radio"
+                            onChange={() => toggleMenstruationSymptom(value)}
+                            type="checkbox"
                             value={value}
                           />
                           <i className="kind-check" aria-hidden="true">
-                            {menstruationSymptom === value ? (
+                            {menstruationSymptoms.includes(value) ? (
                               <Check size={15} />
                             ) : null}
                           </i>
