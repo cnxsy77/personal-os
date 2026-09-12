@@ -312,7 +312,8 @@ describe('local Personal OS data', () => {
 
     data.recordWorkout({
       date: '2026-09-11',
-      kind: 'push',
+      kind: 'chest',
+      kinds: ['chest'],
       status: 'completed',
       durationMinutes: 45,
       notes: ' 主项卧推 ',
@@ -322,6 +323,9 @@ describe('local Personal OS data', () => {
       sleepHours: 7.5,
       weightKg: 72.4,
       condition: 'good',
+      menstruationFlow: 'light',
+      menstruationSymptoms: ['cramps'],
+      menstruationNote: '周期第 1 天',
     })
 
     const reloaded = createLocalPersonalOSData({ storage })
@@ -329,7 +333,8 @@ describe('local Personal OS data', () => {
 
     expect(snapshot.workouts[0]).toMatchObject({
       date: '2026-09-11',
-      kind: 'push',
+      kind: 'chest',
+      kinds: ['chest'],
       status: 'completed',
       durationMinutes: 45,
       notes: '主项卧推',
@@ -339,7 +344,141 @@ describe('local Personal OS data', () => {
       sleepHours: 7.5,
       weightKg: 72.4,
       condition: 'good',
+      menstruationFlow: 'light',
+      menstruationSymptoms: ['cramps'],
+      menstruationNote: '周期第 1 天',
     })
+  })
+
+  it('persists structured coach workout data', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordWorkout({
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest', 'shoulders'],
+      status: 'completed',
+      durationMinutes: 60,
+      notes: '',
+      focus: ' 胸加肩 ',
+      warmup: [' 热身激活 ', ''],
+      exercises: [
+        { name: ' 哑铃飞鸟 ', prescription: '12×2×4', target: ' ' },
+        { name: ' ', prescription: '12×4' },
+      ],
+      finisher: ['核心收尾'],
+      sorenessAreas: [' 胸大肌 ', '', '肩前束'],
+      coachNotes: ['整体强度还不错'],
+    })
+
+    const reloaded = createLocalPersonalOSData({ storage })
+
+    expect(reloaded.getSnapshot().workouts[0]).toEqual({
+      id: expect.any(String),
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest', 'shoulders'],
+      status: 'completed',
+      durationMinutes: 60,
+      notes: '',
+      focus: '胸加肩',
+      warmup: ['热身激活'],
+      exercises: [{ name: '哑铃飞鸟', prescription: '12×2×4' }],
+      finisher: ['核心收尾'],
+      sorenessAreas: ['胸大肌', '肩前束'],
+      coachNotes: ['整体强度还不错'],
+    })
+  })
+
+  it('updates a workout without changing its id or order', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordWorkout({
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest', 'shoulders'],
+      status: 'completed',
+      durationMinutes: 60,
+      notes: '原始备注',
+      focus: '胸加肩',
+      warmup: ['热身激活'],
+      exercises: [{ name: '哑铃飞鸟', prescription: '12×2×4' }],
+      finisher: ['核心收尾'],
+      sorenessAreas: ['胸大肌'],
+      coachNotes: ['整体强度还不错'],
+    })
+    data.recordWorkout({
+      date: '2026-09-11',
+      kind: 'back',
+      kinds: ['back'],
+      status: 'completed',
+      durationMinutes: 50,
+      notes: '',
+    })
+
+    const before = data.getSnapshot().workouts
+    const workoutId = before[1]?.id as string
+
+    data.updateWorkout(workoutId, {
+      date: '2026-09-10',
+      kind: 'cardio',
+      kinds: ['cardio', 'legs'],
+      status: 'completed',
+      durationMinutes: 35,
+      notes: ' 更新后的备注 ',
+      exercises: [{ name: ' 高脚杯深蹲 ', prescription: '12×2' }],
+    })
+
+    const after = data.getSnapshot().workouts
+
+    expect(after).toHaveLength(2)
+    expect(after[1]?.id).toBe(workoutId)
+    expect(after[1]).toEqual({
+      id: workoutId,
+      date: '2026-09-10',
+      kind: 'cardio',
+      kinds: ['cardio', 'legs'],
+      status: 'completed',
+      durationMinutes: 35,
+      notes: '更新后的备注',
+      exercises: [{ name: '高脚杯深蹲', prescription: '12×2' }],
+    })
+  })
+
+  it('rejects invalid workout updates without changing state', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.recordWorkout({
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest'],
+      status: 'completed',
+      durationMinutes: 60,
+      notes: '',
+    })
+    const before = data.getSnapshot()
+    const workoutId = before.workouts[0]?.id as string
+
+    expect(() => data.updateWorkout(workoutId, {
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest'],
+      status: 'completed',
+      durationMinutes: -1,
+      notes: '',
+    })).toThrow('训练时长必须在 0 到 600 分钟之间')
+    expect(() => data.updateWorkout('missing', {
+      date: '2026-09-09',
+      kind: 'chest',
+      kinds: ['chest'],
+      status: 'completed',
+      durationMinutes: 30,
+      notes: '',
+    })).toThrow('训练记录不存在')
+    expect(data.getSnapshot()).toBe(before)
   })
 
   it('updates workout status and replaces a health metric on the same date', () => {
@@ -349,6 +488,7 @@ describe('local Personal OS data', () => {
     data.recordWorkout({
       date: '2026-09-11',
       kind: 'cardio',
+      kinds: ['cardio'],
       status: 'planned',
       durationMinutes: 30,
       notes: '',
@@ -386,7 +526,8 @@ describe('local Personal OS data', () => {
 
     expect(() => data.recordWorkout({
       date: '2026-09-11',
-      kind: 'push',
+      kind: 'chest',
+      kinds: ['chest'],
       status: 'completed',
       durationMinutes: -10,
       notes: '',

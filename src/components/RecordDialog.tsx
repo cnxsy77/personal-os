@@ -10,6 +10,7 @@ export type RecordDialogTab = {
 type RecordDialogProps = {
   open: boolean
   title: string
+  dialogClassName?: string
   description?: string
   tabs?: RecordDialogTab[]
   activeTab?: string
@@ -27,6 +28,7 @@ export function RecordDialog({
   onTabChange,
   onClose,
   children,
+  dialogClassName,
 }: RecordDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -49,6 +51,10 @@ export function RecordDialog({
     panelRef.current?.focus({ preventScroll: true })
 
     function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.defaultPrevented) {
+        return
+      }
+
       if (event.key === 'Escape') {
         event.preventDefault()
         onCloseRef.current()
@@ -126,7 +132,7 @@ export function RecordDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="record-dialog"
+        className={['record-dialog', dialogClassName].filter(Boolean).join(' ')}
         onKeyDown={handleTabKey}
         ref={panelRef}
         role="dialog"

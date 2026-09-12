@@ -84,17 +84,55 @@ export type WeeklyReview = {
 
 export type WeeklyReviewInput = Omit<WeeklyReview, 'id'>
 
-export type WorkoutKind = 'push' | 'pull' | 'legs' | 'cardio' | 'rest'
+export type WorkoutKind =
+  | 'glutes'
+  | 'legs'
+  | 'shoulders'
+  | 'chest'
+  | 'back'
+  | 'cardio'
+  // Legacy values stay readable for records saved before the type update.
+  | 'push'
+  | 'pull'
+  | 'rest'
+
+export type SelectableWorkoutKind = Exclude<
+  WorkoutKind,
+  'push' | 'pull' | 'rest'
+>
+
+export type MenstruationFlow = 'none' | 'spotting' | 'light' | 'medium' | 'heavy'
+
+export type MenstruationSymptom =
+  | 'cramps'
+  | 'bloating'
+  | 'headache'
+  | 'breastTenderness'
+  | 'fatigue'
+  | 'moodChanges'
 
 export type WorkoutStatus = 'planned' | 'completed' | 'skipped'
+
+export type WorkoutExercise = {
+  name: string
+  prescription?: string
+  target?: string
+}
 
 export type Workout = {
   id: string
   date: string
   kind: WorkoutKind
-  status: WorkoutStatus
+  kinds?: WorkoutKind[]
+  status?: WorkoutStatus
   durationMinutes: number
   notes: string
+  focus?: string
+  warmup?: string[]
+  exercises?: WorkoutExercise[]
+  finisher?: string[]
+  sorenessAreas?: string[]
+  coachNotes?: string[]
 }
 
 export type WorkoutInput = Omit<Workout, 'id'>
@@ -107,6 +145,9 @@ export type HealthMetric = {
   sleepHours: number
   weightKg: number | null
   condition: HealthCondition
+  menstruationFlow?: MenstruationFlow
+  menstruationSymptoms?: MenstruationSymptom[]
+  menstruationNote?: string
 }
 
 export type HealthMetricInput = Omit<HealthMetric, 'id'>
@@ -140,6 +181,7 @@ export type PersonalOSData = {
   setLearningResourceStatus: (id: string, status: LearningResourceStatus) => void
   saveWeeklyReview: (input: WeeklyReviewInput) => void
   recordWorkout: (input: WorkoutInput) => void
+  updateWorkout: (id: string, input: WorkoutInput) => void
   setWorkoutStatus: (id: string, status: WorkoutStatus) => void
   saveHealthMetric: (input: HealthMetricInput) => void
 }

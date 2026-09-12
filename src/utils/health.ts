@@ -1,5 +1,7 @@
 import type {
   HealthCondition,
+  MenstruationFlow,
+  MenstruationSymptom,
   HealthMetric,
   Workout,
   WorkoutKind,
@@ -10,10 +12,14 @@ import { toDateKey } from './study'
 export const weeklyWorkoutTarget = 4
 
 export const workoutKindLabels: Record<WorkoutKind, string> = {
+  glutes: '臀',
+  legs: '腿',
+  shoulders: '肩',
+  chest: '胸',
+  back: '背',
+  cardio: '有氧',
   push: '推',
   pull: '拉',
-  legs: '腿',
-  cardio: '有氧',
   rest: '休息',
 }
 
@@ -30,6 +36,23 @@ export const healthConditionLabels: Record<HealthCondition, string> = {
   tired: '疲惫',
 }
 
+export const menstruationFlowLabels: Record<MenstruationFlow, string> = {
+  none: '无',
+  spotting: '点滴',
+  light: '少量',
+  medium: '中等',
+  heavy: '大量',
+}
+
+export const menstruationSymptomLabels: Record<MenstruationSymptom, string> = {
+  cramps: '痛经',
+  bloating: '腹胀',
+  headache: '头痛',
+  breastTenderness: '胸部胀痛',
+  fatigue: '疲劳',
+  moodChanges: '情绪波动',
+}
+
 export function getWeekStart(value: Date) {
   const start = new Date(value)
   const weekday = start.getDay()
@@ -43,10 +66,7 @@ export function getCompletedWorkoutsThisWeek(workouts: Workout[], now: Date) {
   const endKey = toDateKey(now)
 
   return workouts.filter(
-    (workout) =>
-      workout.status === 'completed' &&
-      workout.date >= startKey &&
-      workout.date <= endKey,
+    (workout) => workout.date >= startKey && workout.date <= endKey,
   )
 }
 

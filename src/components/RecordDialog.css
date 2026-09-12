@@ -21,6 +21,11 @@
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
 }
 
+.record-dialog.record-dialog-wide {
+  width: min(1080px, 100%);
+  max-height: min(920px, calc(100dvh - 48px));
+}
+
 .record-dialog:focus {
   outline: none;
 }
@@ -59,19 +64,24 @@
 }
 
 .record-dialog-tabs {
+  flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin: 0 28px 22px;
   padding: 5px;
-  overflow-x: auto;
+  min-height: 52px;
   border: 1px solid #2f3b33;
   border-radius: 13px;
   background: #151c18;
 }
 
 .record-dialog-tabs button {
-  flex: 1 0 auto;
+  flex: 1 1 132px;
+  min-width: 0;
   min-height: 42px;
+  padding: 0 10px;
   border: 0;
   border-radius: 9px;
   background: transparent;

@@ -4,7 +4,8 @@ body {
 }
 
 .content {
-  width: min(1360px, 100%);
+  width: 100%;
+  margin: 0;
   padding: 46px clamp(20px, 4vw, 64px) 78px;
 }
 
@@ -253,8 +254,8 @@ h1 {
 .compact-form button,
 .resource-form button,
 .review-form button,
-.health-fields button,
-.metric-fields button {
+.health-fields > button,
+.metric-fields > button {
   min-height: 47px;
   padding: 0 20px;
   font-size: 14px;

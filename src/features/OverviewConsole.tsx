@@ -13,7 +13,6 @@ import {
   getCompletedWorkoutsThisWeek,
   weeklyWorkoutTarget,
   workoutKindLabels,
-  workoutStatusLabels,
 } from '../utils/health'
 import {
   formatStudyDuration,
@@ -376,11 +375,13 @@ function buildRecords(state: PersonalOSState, now: Date): OverviewRecord[] {
   const workoutRecords: OverviewRecord[] = state.workouts.map((workout) => ({
     id: workout.id,
     domain: 'workout' as const,
-    title: `${workoutKindLabels[workout.kind]}训练`,
+    title: `${(
+      workout.kinds?.length ? workout.kinds : [workout.kind]
+    ).map((kind) => workoutKindLabels[kind]).join(' / ')}训练`,
     keyData: `${workout.durationMinutes} 分钟`,
     timing: formatDate(workout.date),
-    status: workoutStatusLabels[workout.status],
-    tone: workout.status === 'completed' ? 'positive' : workout.status === 'skipped' ? 'danger' : 'warning',
+    status: '已记录',
+    tone: 'positive',
   }))
   const financeRecords: OverviewRecord[] = state.transactions.map((transaction) => ({
     id: transaction.id,

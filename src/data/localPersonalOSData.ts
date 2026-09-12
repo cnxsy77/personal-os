@@ -7,6 +7,8 @@ import type {
   LearningResource,
   LearningResourceInput,
   LearningResourceStatus,
+  MenstruationFlow,
+  MenstruationSymptom,
   PersonalOSData,
   PersonalOSState,
   Project,
@@ -22,9 +24,11 @@ import type {
   WeeklyReview,
   WeeklyReviewInput,
   Workout,
+  WorkoutExercise,
   WorkoutInput,
   WorkoutKind,
   WorkoutStatus,
+  SelectableWorkoutKind,
 } from './model'
 
 const storageKey = 'personal-os:v1'
@@ -280,16 +284,26 @@ export function createLocalPersonalOSData(
     })
   }
 
-  function recordWorkout(input: WorkoutInput) {
+  function buildWorkout(id: string, input: WorkoutInput): Workout {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
       throw new Error('请选择有效的训练日期')
     }
 
-    if (!isWorkoutKind(input.kind)) {
+    if (!isSelectableWorkoutKind(input.kind)) {
       throw new Error('请选择有效的训练类型')
     }
 
-    if (!isWorkoutStatus(input.status)) {
+    if (!input.kinds?.length) {
+      throw new Error('请选择至少一个训练类型')
+    }
+
+    if (!input.kinds.every(isSelectableWorkoutKind)) {
+      throw new Error('请选择有效的训练类型')
+    }
+
+    const kinds = [...new Set(input.kinds)]
+
+    if (input.status !== undefined && !isWorkoutStatus(input.status)) {
       throw new Error('请选择有效的训练状态')
     }
 
@@ -302,14 +316,77 @@ export function createLocalPersonalOSData(
     }
 
     const workout: Workout = {
-      ...input,
-      id: createId(),
+      id,
+      kind: kinds[0],
+      kinds,
+      status: input.status ?? 'completed',
+      durationMinutes: input.durationMinutes,
+      date: input.date,
       notes: input.notes.trim(),
     }
+
+    if (input.focus?.trim()) {
+      workout.focus = input.focus.trim()
+    }
+
+    const warmup = cleanStringArray(input.warmup)
+
+    if (warmup.length > 0) {
+      workout.warmup = warmup
+    }
+
+    const exercises = cleanWorkoutExercises(input.exercises)
+
+    if (exercises.length > 0) {
+      workout.exercises = exercises
+    }
+
+    const finisher = cleanStringArray(input.finisher)
+
+    if (finisher.length > 0) {
+      workout.finisher = finisher
+    }
+
+    const sorenessAreas = cleanStringArray(input.sorenessAreas)
+
+    if (sorenessAreas.length > 0) {
+      workout.sorenessAreas = sorenessAreas
+    }
+
+    const coachNotes = cleanStringArray(input.coachNotes)
+
+    if (coachNotes.length > 0) {
+      workout.coachNotes = coachNotes
+    }
+
+    return workout
+  }
+
+  function recordWorkout(input: WorkoutInput) {
+    const workout = buildWorkout(createId(), input)
 
     commit({
       ...state,
       workouts: [workout, ...state.workouts],
+    })
+  }
+
+  function updateWorkout(id: string, input: WorkoutInput) {
+    const existingIndex = state.workouts.findIndex(
+      (workout) => workout.id === id,
+    )
+
+    if (existingIndex < 0) {
+      throw new Error('训练记录不存在')
+    }
+
+    const workout = buildWorkout(id, input)
+
+    commit({
+      ...state,
+      workouts: state.workouts.map((item, index) =>
+        index === existingIndex ? workout : item,
+      ),
     })
   }
 
@@ -352,6 +429,20 @@ export function createLocalPersonalOSData(
       throw new Error('请选择有效的身体状态')
     }
 
+    if (
+      input.menstruationFlow !== undefined &&
+      !isMenstruationFlow(input.menstruationFlow)
+    ) {
+      throw new Error('请选择有效的月经流量')
+    }
+
+    if (
+      input.menstruationSymptoms !== undefined &&
+      !input.menstruationSymptoms.every(isMenstruationSymptom)
+    ) {
+      throw new Error('请选择有效的月经症状')
+    }
+
     const metric: HealthMetric = {
       id: createId(),
       date: input.date,
@@ -361,6 +452,13 @@ export function createLocalPersonalOSData(
           ? null
           : Math.round(input.weightKg * 10) / 10,
       condition: input.condition,
+      ...(input.menstruationFlow ? { menstruationFlow: input.menstruationFlow } : {}),
+      ...(input.menstruationSymptoms?.length
+        ? { menstruationSymptoms: [...new Set(input.menstruationSymptoms)] }
+        : {}),
+      ...(input.menstruationNote?.trim()
+        ? { menstruationNote: input.menstruationNote.trim() }
+        : {}),
     }
     const existingIndex = state.healthMetrics.findIndex(
       (item) => item.date === metric.date,
@@ -393,6 +491,7 @@ export function createLocalPersonalOSData(
     setLearningResourceStatus,
     saveWeeklyReview,
     recordWorkout,
+    updateWorkout,
     setWorkoutStatus,
     saveHealthMetric,
   }
@@ -688,22 +787,68 @@ function isWorkout(value: unknown): value is Workout {
     typeof value.date === 'string' &&
     /^\d{4}-\d{2}-\d{2}$/.test(value.date) &&
     isWorkoutKind(value.kind) &&
-    isWorkoutStatus(value.status) &&
+    (value.status === undefined || isWorkoutStatus(value.status)) &&
+    (value.kinds === undefined ||
+      (Array.isArray(value.kinds) && value.kinds.every(isSelectableWorkoutKind))) &&
     typeof value.durationMinutes === 'number' &&
     Number.isInteger(value.durationMinutes) &&
     value.durationMinutes >= 0 &&
     value.durationMinutes <= 600 &&
     typeof value.notes === 'string'
+  ) && (
+    (value.focus === undefined ||
+      (typeof value.focus === 'string' && value.focus.trim().length > 0)) &&
+    (value.warmup === undefined || isStringArray(value.warmup)) &&
+    (value.exercises === undefined ||
+      (Array.isArray(value.exercises) &&
+        value.exercises.every(isWorkoutExercise))) &&
+    (value.finisher === undefined || isStringArray(value.finisher)) &&
+    (value.sorenessAreas === undefined || isStringArray(value.sorenessAreas)) &&
+    (value.coachNotes === undefined || isStringArray(value.coachNotes))
+  )
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function isWorkoutExercise(value: unknown): value is WorkoutExercise {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    (value.prescription === undefined ||
+      (typeof value.prescription === 'string' &&
+        value.prescription.trim().length > 0)) &&
+    (value.target === undefined ||
+      (typeof value.target === 'string' && value.target.trim().length > 0))
   )
 }
 
 function isWorkoutKind(value: unknown): value is WorkoutKind {
   return (
+    value === 'glutes' ||
+    value === 'legs' ||
+    value === 'shoulders' ||
+    value === 'chest' ||
+    value === 'back' ||
+    value === 'cardio' ||
     value === 'push' ||
     value === 'pull' ||
-    value === 'legs' ||
-    value === 'cardio' ||
     value === 'rest'
+  )
+}
+
+function isSelectableWorkoutKind(
+  value: unknown,
+): value is SelectableWorkoutKind {
+  return (
+    value === 'glutes' ||
+    value === 'legs' ||
+    value === 'shoulders' ||
+    value === 'chest' ||
+    value === 'back' ||
+    value === 'cardio'
   )
 }
 
@@ -729,7 +874,36 @@ function isHealthMetric(value: unknown): value is HealthMetric {
         Number.isFinite(value.weightKg) &&
         value.weightKg >= 20 &&
         value.weightKg <= 300)) &&
-    isHealthCondition(value.condition)
+    isHealthCondition(value.condition) &&
+    (value.menstruationFlow === undefined ||
+      isMenstruationFlow(value.menstruationFlow)) &&
+    (value.menstruationSymptoms === undefined ||
+      (Array.isArray(value.menstruationSymptoms) &&
+        value.menstruationSymptoms.every(isMenstruationSymptom))) &&
+    (value.menstruationNote === undefined ||
+      (typeof value.menstruationNote === 'string' &&
+        value.menstruationNote.trim().length > 0))
+  )
+}
+
+function isMenstruationFlow(value: unknown): value is MenstruationFlow {
+  return (
+    value === 'none' ||
+    value === 'spotting' ||
+    value === 'light' ||
+    value === 'medium' ||
+    value === 'heavy'
+  )
+}
+
+function isMenstruationSymptom(value: unknown): value is MenstruationSymptom {
+  return (
+    value === 'cramps' ||
+    value === 'bloating' ||
+    value === 'headache' ||
+    value === 'breastTenderness' ||
+    value === 'fatigue' ||
+    value === 'moodChanges'
   )
 }
 
@@ -744,6 +918,30 @@ function isHealthCondition(value: unknown): value is HealthCondition {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function cleanStringArray(value: string[] | undefined) {
+  return (value ?? [])
+    .filter((item) => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function cleanWorkoutExercises(value: WorkoutExercise[] | undefined) {
+  return (value ?? [])
+    .filter((exercise) => typeof exercise?.name === 'string')
+    .map((exercise) => {
+      const name = exercise.name.trim()
+      const prescription = exercise.prescription?.trim()
+      const target = exercise.target?.trim()
+
+      return {
+        name,
+        ...(prescription ? { prescription } : {}),
+        ...(target ? { target } : {}),
+      }
+    })
+    .filter((exercise) => exercise.name.length > 0)
 }
 
 function createId() {

@@ -205,7 +205,7 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onWorkoutSubmit={data.recordWorkout}
-            onWorkoutStatusChange={data.setWorkoutStatus}
+            onWorkoutUpdate={data.updateWorkout}
             onMetricSubmit={data.saveHealthMetric}
           />
         ) : active === '工作台' ? (
@@ -247,7 +247,7 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onWorkoutSubmit={data.recordWorkout}
-            onWorkoutStatusChange={data.setWorkoutStatus}
+            onWorkoutUpdate={data.updateWorkout}
             onMetricSubmit={data.saveHealthMetric}
           />
         ) : null}
