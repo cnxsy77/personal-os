@@ -459,7 +459,6 @@ export function HealthQuickRecord({
     <RecordDialog
       activeTab={dialogTab}
       description="记录训练和身体状态。"
-      dialogClassName="record-dialog-wide"
       onClose={closeDialog}
       onTabChange={openDialog}
       open={dialogOpen}

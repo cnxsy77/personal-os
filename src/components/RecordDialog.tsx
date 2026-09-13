@@ -10,7 +10,6 @@ export type RecordDialogTab = {
 type RecordDialogProps = {
   open: boolean
   title: string
-  dialogClassName?: string
   description?: string
   tabs?: RecordDialogTab[]
   activeTab?: string
@@ -28,7 +27,6 @@ export function RecordDialog({
   onTabChange,
   onClose,
   children,
-  dialogClassName,
 }: RecordDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -140,7 +138,7 @@ export function RecordDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={['record-dialog', dialogClassName].filter(Boolean).join(' ')}
+        className="record-dialog"
         onKeyDown={handleTabKey}
         ref={panelRef}
         role="dialog"

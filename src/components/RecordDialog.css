@@ -11,8 +11,9 @@
 
 .record-dialog {
   font-size: inherit;
-  width: min(780px, 100%);
-  max-height: min(760px, calc(100dvh - 64px));
+  width: min(1080px, 100%);
+  height: min(920px, calc(100dvh - 48px));
+  max-height: min(920px, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -20,11 +21,6 @@
   border-radius: 20px;
   background: #18201b;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
-}
-
-.record-dialog.record-dialog-wide {
-  width: min(1080px, 100%);
-  max-height: min(920px, calc(100dvh - 48px));
 }
 
 .record-dialog:focus {
@@ -142,6 +138,7 @@
 
   .record-dialog {
     width: 100%;
+    height: 92dvh;
     max-height: 92dvh;
     border: 0;
     border-radius: 22px 22px 0 0;
