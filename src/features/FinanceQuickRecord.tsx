@@ -165,6 +165,7 @@ export function FinanceQuickRecord({
   const financeDialog = (
     <RecordDialog
       activeTab={dialogTab}
+      dialogClassName={dialogTab === 'import' ? 'record-dialog-wide' : undefined}
       description="记录收支、导入账单、管理周期记录或调整预算。"
       onClose={closeDialog}
       onTabChange={openDialog}

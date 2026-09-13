@@ -129,19 +129,6 @@ label {
   cursor: pointer;
 }
 
-.finance-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: 16px;
-  align-items: start;
-}
-
-@media (max-width: 980px) {
-  .finance-page {
-    grid-template-columns: 1fr;
-  }
-}
-
 h1 {
   font-size: 35px;
   margin: 10px 0 0;
@@ -244,34 +231,27 @@ h1 {
   margin: 10px 0 8px;
 }
 
-.finance-panel,
 .learning-panel,
 .health-panel {
   padding: 30px;
 }
 
-.finance-panel h2,
 .learning-panel h2,
 .health-panel h2 {
   font-size: 24px;
   margin-bottom: 24px;
 }
 
-.finance-summary > div,
 .learning-summary > div,
 .health-summary > div {
   padding: 21px;
 }
 
-.finance-summary strong,
 .learning-summary strong,
 .health-summary strong {
   font-size: 24px;
 }
 
-.finance-form,
-.budget-panel,
-.category-panel,
 .learning-form,
 .compact-form,
 .resource-form,
@@ -281,9 +261,6 @@ h1 {
   padding: 22px;
 }
 
-.finance-fields input,
-.finance-fields select,
-.budget-form input,
 .learning-fields input,
 .learning-fields select,
 .compact-form input,
@@ -299,8 +276,6 @@ h1 {
   font-size: 15px;
 }
 
-.finance-fields button,
-.budget-form button,
 .learning-fields button,
 .compact-form button,
 .resource-form button,
@@ -323,13 +298,11 @@ h1 {
   }
 }
 
-.finance-panel li,
 .learning-panel li,
 .health-panel li {
   padding: 18px 21px;
 }
 
-.finance-panel h4,
 .learning-panel h4,
 .health-panel h4,
 .path-list h3,
@@ -338,8 +311,6 @@ h1 {
   font-size: 17px;
 }
 
-.finance-panel p,
-.finance-panel b,
 .learning-panel p,
 .learning-panel b,
 .health-panel p,
@@ -349,7 +320,6 @@ h1 {
 }
 
 .learning-list-heading h3,
-.finance-list-heading h3,
 .health-list-heading h3 {
   font-size: 19px;
 }
@@ -415,7 +385,6 @@ h1 {
     font-size: 26px;
   }
 
-  .finance-panel,
   .learning-panel,
   .health-panel {
     padding: 24px;
