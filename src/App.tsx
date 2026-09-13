@@ -126,7 +126,7 @@ export default function App({ data = defaultData }: AppProps) {
 
   return (
     <main className="app">
-      <aside className={mobileOpen ? 'open' : ''}>
+      <aside className={mobileOpen ? 'app-rail open' : 'app-rail'}>
         <div className="brand">
           <b>P</b>
           <strong>Personal OS</strong>
