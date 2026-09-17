@@ -71,9 +71,31 @@ func TestGetStateReturnsEmptyState(t *testing.T) {
 	}
 }
 
+func TestLocalDevelopmentOriginsAreAllowed(t *testing.T) {
+	handler := newTestServer(t)
+	for _, origin := range []string{
+		"http://localhost:5173",
+		"http://127.0.0.1:5175",
+	} {
+		response := request(t, handler, http.MethodGet, "/api/state", nil, map[string]string{
+			"Origin": origin,
+		})
+		if response.Code != http.StatusOK {
+			t.Fatalf("origin %s status = %d, body = %s", origin, response.Code, response.Body.String())
+		}
+	}
+
+	rejected := request(t, handler, http.MethodGet, "/api/state", nil, map[string]string{
+		"Origin": "https://example.com",
+	})
+	if rejected.Code != http.StatusForbidden {
+		t.Fatalf("external origin status = %d", rejected.Code)
+	}
+}
+
 func TestTaskLifecycleRequiresLocalClientHeader(t *testing.T) {
 	handler := newTestServer(t)
-	input := map[string]any{ "title": " 复盘后端方案 ", "date": "2026-09-17", "category": "work" }
+	input := map[string]any{"title": " 复盘后端方案 ", "date": "2026-09-17", "category": "work"}
 	rejected := request(t, handler, http.MethodPost, "/api/tasks", input, nil)
 	if rejected.Code != http.StatusForbidden {
 		t.Fatalf("missing header status = %d", rejected.Code)
@@ -86,9 +108,9 @@ func TestTaskLifecycleRequiresLocalClientHeader(t *testing.T) {
 	}
 	var state struct {
 		Tasks []struct {
-			ID     string `json:"id"`
-			Title  string `json:"title"`
-			Meta   string `json:"meta"`
+			ID       string `json:"id"`
+			Title    string `json:"title"`
+			Meta     string `json:"meta"`
 			Category string `json:"category"`
 		} `json:"tasks"`
 	}

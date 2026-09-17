@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "cd server && go run ./cmd/personal-os --db server/data/personal-os.db",
+    "dev:server": "cd server && go run ./cmd/personal-os --db data/personal-os.db",
     "dev:local": "bash scripts/dev-local.sh",
-    "db:migrate": "cd server && go run ./cmd/personal-os --db server/data/personal-os.db -migrate-only",
+    "db:migrate": "cd server && go run ./cmd/personal-os --db data/personal-os.db -migrate-only",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
@@ -17,7 +17,8 @@
   "dependencies": {
     "lucide-react": "^1.44.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",

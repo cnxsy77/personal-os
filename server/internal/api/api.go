@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"personal-os/server/internal/model"
@@ -50,7 +51,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin != "" && origin != "http://localhost:5173" && origin != "http://127.0.0.1:5173" {
+		if origin != "" && !isAllowedOrigin(origin) {
 			writeError(w, http.StatusForbidden, "forbidden_origin", "只允许本机开发页面访问")
 			return
 		}
@@ -66,6 +67,19 @@ func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func isAllowedOrigin(origin string) bool {
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Scheme != "http" {
+		return false
+	}
+	switch parsed.Hostname() {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Server) write(handler http.HandlerFunc) http.HandlerFunc {
