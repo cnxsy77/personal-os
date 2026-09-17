@@ -5,6 +5,12 @@ import App from './App'
 import { createLocalPersonalOSData } from './data/localPersonalOSData'
 import { createMemoryStorage } from './test/memoryStorage'
 
+function toDateKey(value: Date) {
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${value.getFullYear()}-${month}-${day}`
+}
+
 describe('health quick capture', () => {
   it('records a workout and updates its status', async () => {
     const user = userEvent.setup()
@@ -181,6 +187,8 @@ describe('health quick capture', () => {
   it('edits and deletes a health metric after confirmation', async () => {
     const user = userEvent.setup()
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    const today = toDateKey(new Date())
+    const todayLabel = today.replaceAll('-', '.')
     render(<App data={data} />)
 
     await user.click(screen.getByRole('button', { name: '锻炼' }))
@@ -190,10 +198,10 @@ describe('health quick capture', () => {
     await user.click(screen.getByRole('button', { name: '保存身体指标' }))
 
     const originalId = data.getSnapshot().healthMetrics[0]?.id as string
-    await user.click(screen.getByRole('button', { name: '编辑2026.09.17身体指标' }))
+    await user.click(screen.getByRole('button', { name: `编辑${todayLabel}身体指标` }))
 
     expect(screen.getByRole('dialog', { name: '编辑身体指标' })).toBeInTheDocument()
-    expect(screen.getByLabelText('记录日期')).toHaveValue('2026-09-17')
+    expect(screen.getByLabelText('记录日期')).toHaveValue(today)
     expect(screen.getByLabelText('睡眠时长')).toHaveValue(7.2)
 
     await user.clear(screen.getByLabelText('睡眠时长'))
@@ -207,13 +215,13 @@ describe('health quick capture', () => {
       sleepHours: 8.4,
     })
 
-    await user.click(screen.getByRole('button', { name: '删除2026.09.17身体指标' }))
+    await user.click(screen.getByRole('button', { name: `删除${todayLabel}身体指标` }))
     expect(screen.getByRole('alertdialog', { name: '删除身体指标' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '取消' }))
     expect(data.getSnapshot().healthMetrics).toHaveLength(1)
 
-    await user.click(screen.getByRole('button', { name: '删除2026.09.17身体指标' }))
+    await user.click(screen.getByRole('button', { name: `删除${todayLabel}身体指标` }))
     await user.click(screen.getByRole('button', { name: '确认删除' }))
 
     expect(screen.getByText('身体指标已删除')).toBeInTheDocument()
