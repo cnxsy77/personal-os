@@ -17,6 +17,11 @@ type PageId =
 
 type SettingsDrawerProps = {
   activePage: PageId
+  onCategoryRename: (
+    kind: 'expense' | 'income',
+    from: string,
+    to: string,
+  ) => void
   onClose: () => void
   onSettingsChange: (input: PersonalOSSettingsInput) => void
   open: boolean
@@ -34,6 +39,7 @@ const pageNames: Record<PageId, string> = {
 
 export function SettingsDrawer({
   activePage,
+  onCategoryRename,
   onClose,
   onSettingsChange,
   open,
@@ -44,6 +50,7 @@ export function SettingsDrawer({
   )
   const [categoryDraft, setCategoryDraft] = useState('')
   const [categoryError, setCategoryError] = useState('')
+  const [editingCategory, setEditingCategory] = useState<string | null>(null)
   const [targetDraft, setTargetDraft] = useState(
     String(settings.weeklyWorkoutTarget),
   )
@@ -63,10 +70,6 @@ export function SettingsDrawer({
       return
     }
 
-    setCategoryDraft('')
-    setCategoryError('')
-    setTargetDraft(String(settings.weeklyWorkoutTarget))
-    setTargetError('')
     triggerRef.current = document.activeElement
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -135,7 +138,7 @@ export function SettingsDrawer({
     firstElement.focus()
   }
 
-  function addCategory() {
+  function submitCategory() {
     const name = categoryDraft.trim()
 
     if (!name) {
@@ -148,6 +151,22 @@ export function SettingsDrawer({
         ? settings.expenseCategories
         : settings.incomeCategories
 
+    if (editingCategory) {
+      if (name === editingCategory) {
+        cancelCategoryEdit()
+        return
+      }
+
+      if (categories.includes(name)) {
+        setCategoryError('分类已存在')
+        return
+      }
+
+      onCategoryRename(categoryKind, editingCategory, name)
+      cancelCategoryEdit()
+      return
+    }
+
     if (categories.includes(name)) {
       setCategoryError('分类已存在')
       return
@@ -158,6 +177,12 @@ export function SettingsDrawer({
         ? { expenseCategories: [...categories, name] }
         : { incomeCategories: [...categories, name] },
     )
+    setCategoryDraft('')
+    setCategoryError('')
+  }
+
+  function cancelCategoryEdit() {
+    setEditingCategory(null)
     setCategoryDraft('')
     setCategoryError('')
   }
@@ -243,7 +268,7 @@ export function SettingsDrawer({
                     className={categoryKind === 'expense' ? 'selected' : ''}
                     onClick={() => {
                       setCategoryKind('expense')
-                      setCategoryError('')
+                      cancelCategoryEdit()
                     }}
                     type="button"
                   >
@@ -254,7 +279,7 @@ export function SettingsDrawer({
                     className={categoryKind === 'income' ? 'selected' : ''}
                     onClick={() => {
                       setCategoryKind('income')
-                      setCategoryError('')
+                      cancelCategoryEdit()
                     }}
                     type="button"
                   >
@@ -263,35 +288,55 @@ export function SettingsDrawer({
                 </div>
 
                 <div className="settings-add">
-                  <label htmlFor="settings-category">新增分类</label>
+                  <label htmlFor="settings-category">
+                    {editingCategory ? '修改分类名称' : '新增分类'}
+                  </label>
                   <input
                     id="settings-category"
                     onChange={(event) => setCategoryDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault()
-                        addCategory()
+                        submitCategory()
                       }
                     }}
                     placeholder="输入分类名称"
                     value={categoryDraft}
                   />
-                  <button onClick={addCategory} type="button">
-                    添加
+                  <button onClick={submitCategory} type="button">
+                    {editingCategory ? '保存' : '添加'}
                   </button>
+                  {editingCategory ? (
+                    <button onClick={cancelCategoryEdit} type="button">
+                      取消
+                    </button>
+                  ) : null}
                 </div>
 
                 <ul aria-label={`${categoryKind === 'expense' ? '支出' : '收入'}分类列表`}>
                   {activeCategories.map((category) => (
                     <li key={category}>
                       <span>{category}</span>
-                      <button
-                        aria-label={`删除${category}`}
-                        onClick={() => removeCategory(category)}
-                        type="button"
-                      >
-                        删除
-                      </button>
+                      <div className="category-actions">
+                        <button
+                          aria-label={`重命名${category}`}
+                          onClick={() => {
+                            setEditingCategory(category)
+                            setCategoryDraft(category)
+                            setCategoryError('')
+                          }}
+                          type="button"
+                        >
+                          重命名
+                        </button>
+                        <button
+                          aria-label={`删除${category}`}
+                          onClick={() => removeCategory(category)}
+                          type="button"
+                        >
+                          删除
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

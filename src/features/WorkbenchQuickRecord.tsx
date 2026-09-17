@@ -8,9 +8,17 @@ import {
   Plus,
   Rocket,
   Target,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { RecordDialog } from '../components/RecordDialog'
-import type { Project, ProjectInput, ProjectStatus } from '../data/model'
+import type {
+  Project,
+  ProjectInput,
+  ProjectStatus,
+  ProjectUpdateInput,
+} from '../data/model'
 import './WorkbenchQuickRecord.css'
 
 type Props = {
@@ -22,6 +30,8 @@ type Props = {
   onDialogClose: () => void
   onSaved: (message: string) => void
   onProjectSubmit: (input: ProjectInput) => void
+  onProjectUpdate: (id: string, input: ProjectUpdateInput) => void
+  onProjectDelete: (id: string) => void
   onProjectStatusChange: (id: string, status: ProjectStatus) => void
 }
 
@@ -59,6 +69,8 @@ export function WorkbenchQuickRecord({
   onDialogClose,
   onSaved,
   onProjectSubmit,
+  onProjectUpdate,
+  onProjectDelete,
   onProjectStatusChange,
 }: Props) {
   const today = toDateKey(new Date())
@@ -70,6 +82,8 @@ export function WorkbenchQuickRecord({
   const [dueDate, setDueDate] = useState(today)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState<ProjectFilter>('all')
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
 
   const sortedProjects = [...projects].sort(compareByDueDate)
   const dueProjects = sortedProjects.filter(
@@ -92,11 +106,29 @@ export function WorkbenchQuickRecord({
   const distributionTotal = Math.max(1, projects.length)
 
   function openDialog() {
+    setEditingProjectId(null)
+    setName('')
+    setGoal('')
+    setStatus('active')
+    setNextAction('')
+    setDueDate(today)
+    setError('')
+    onDialogOpen(dialogTab)
+  }
+
+  function openEditDialog(project: Project) {
+    setName(project.name)
+    setGoal(project.goal)
+    setStatus(project.status)
+    setNextAction(project.nextAction)
+    setDueDate(project.dueDate ?? today)
+    setEditingProjectId(project.id)
     setError('')
     onDialogOpen(dialogTab)
   }
 
   function closeDialog() {
+    setEditingProjectId(null)
     setError('')
     onDialogClose()
   }
@@ -119,28 +151,37 @@ export function WorkbenchQuickRecord({
       return
     }
 
-    onProjectSubmit({
+    const projectInput = {
       name,
       goal,
       status,
       nextAction,
       dueDate: dueDate || undefined,
-    })
+    }
+
+    if (editingProjectId) {
+      onProjectUpdate(editingProjectId, projectInput)
+    } else {
+      onProjectSubmit(projectInput)
+    }
     setName('')
     setGoal('')
     setNextAction('')
     setError('')
+    setEditingProjectId(null)
     closeDialog()
-    onSaved('项目已保存')
+    onSaved(editingProjectId ? '项目已更新' : '项目已保存')
   }
+
+  const isEditing = editingProjectId !== null
 
   const workbenchDialog = (
     <RecordDialog
       activeTab={dialogTab}
-      description="创建新的工作台项目。"
+      description={isEditing ? '修改当前工作台项目。' : '创建新的工作台项目。'}
       onClose={closeDialog}
       open={dialogOpen}
-      title="添加项目"
+      title={isEditing ? '编辑项目' : '添加项目'}
     >
       <form onSubmit={submit} className="workbench-form">
         <div className="workbench-fields">
@@ -196,7 +237,7 @@ export function WorkbenchQuickRecord({
           </div>
           <button type="submit">
             <FolderGit2 size={16} />
-            保存项目
+            {isEditing ? '更新项目' : '保存项目'}
           </button>
         </div>
         {error ? <p role="alert">{error}</p> : null}
@@ -299,7 +340,25 @@ export function WorkbenchQuickRecord({
                     {projectStatuses.map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
-                  </select>
+                    </select>
+                  <div className="record-actions">
+                    <button
+                      aria-label={`编辑 ${project.name}`}
+                      className="edit"
+                      onClick={() => openEditDialog(project)}
+                      type="button"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      aria-label={`删除 ${project.name}`}
+                      className="delete"
+                      onClick={() => setDeletingProject(project)}
+                      type="button"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </li>
               )
             })
@@ -384,6 +443,20 @@ export function WorkbenchQuickRecord({
       </aside>
 
       {workbenchDialog}
+
+      <ConfirmDialog
+        description={`删除“${deletingProject?.name ?? ''}”后无法恢复，项目相关状态将一起移除。`}
+        onCancel={() => setDeletingProject(null)}
+        onConfirm={() => {
+          if (deletingProject) {
+            onProjectDelete(deletingProject.id)
+          }
+          setDeletingProject(null)
+          onSaved('项目已删除')
+        }}
+        open={deletingProject !== null}
+        title="删除项目"
+      />
     </div>
   )
 }

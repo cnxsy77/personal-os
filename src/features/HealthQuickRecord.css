@@ -83,7 +83,7 @@
   padding-left: 11px;
   color: #8b978e;
   font-family: "DM Mono", monospace;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.1em;
 }
 
@@ -161,7 +161,7 @@
   overflow: hidden;
   color: #8b978e;
   font-family: "DM Mono", monospace;
-  font-size: 10.5px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -182,7 +182,7 @@
   margin-top: 7px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -208,7 +208,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -267,7 +267,7 @@
   margin-top: 4px;
   color: var(--muted);
   font-family: "DM Mono", monospace;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .record-main {
@@ -298,7 +298,7 @@
   border-radius: 999px;
   background: rgba(117, 217, 155, 0.1);
   color: var(--strength);
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -333,7 +333,7 @@
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.045);
   color: #dee6df;
-  font-size: 13.5px;
+  font-size: 14px;
 }
 
 .exercise-line b {
@@ -344,7 +344,7 @@
 .exercise-line code {
   color: #a8bd7e;
   font-family: "DM Mono", monospace;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .workout-detail {
@@ -371,7 +371,7 @@
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.05);
   color: #cbd5cb;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
@@ -389,7 +389,7 @@
 
 .soreness-tags {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 14px;
 }
 
 .soreness-tags {
@@ -434,7 +434,7 @@
   gap: 13px;
   margin: 15px 0 18px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .calendar-legend span,
@@ -470,7 +470,7 @@
 .calendar-weekdays span {
   color: #8b978e;
   font-family: "DM Mono", monospace;
-  font-size: 11.5px;
+  font-size: 14px;
   text-align: center;
 }
 
@@ -490,7 +490,7 @@
 .calendar-day time {
   color: #cfd8d0;
   font-family: "DM Mono", monospace;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .calendar-day b {
@@ -604,14 +604,26 @@
 .metric-list p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 13.5px;
+  font-size: 14px;
 }
 
 .metric-list b {
   align-self: center;
   color: #d8fa71;
-  font-size: 13.5px;
+  font-size: 14px;
   white-space: nowrap;
+}
+
+.metric-side {
+  display: grid;
+  justify-items: end;
+  align-items: center;
+  gap: 10px;
+}
+
+.metric-side .record-actions button {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .health-panel [role='alert'] {
@@ -842,7 +854,7 @@
   display: block;
   color: #93a095;
   font-family: "DM Mono", monospace;
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.1em;
 }
 
@@ -1082,7 +1094,7 @@
   margin: 0 0 8px;
   color: #8b978e;
   font-family: "DM Mono", monospace;
-  font-size: 11.5px;
+  font-size: 14px;
   letter-spacing: 0.08em;
 }
 
@@ -1205,7 +1217,7 @@
   }
 
   .calendar-day b {
-    font-size: 12px;
+    font-size: 14px;
   }
 
   .day-modes {

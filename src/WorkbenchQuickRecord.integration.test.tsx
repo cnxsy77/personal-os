@@ -57,4 +57,38 @@ describe('workbench quick capture', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('请输入项目名称')
     expect(data.getSnapshot().projects).toHaveLength(1)
   })
+
+  it('edits a project and deletes it only after confirmation', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '工作台' }))
+    await user.click(screen.getByRole('button', { name: '编辑 Personal OS' }))
+    expect(screen.getByRole('dialog', { name: '编辑项目' })).toBeInTheDocument()
+    expect(screen.getByLabelText('项目名称')).toHaveValue('Personal OS')
+
+    await user.clear(screen.getByLabelText('项目名称'))
+    await user.type(screen.getByLabelText('项目名称'), 'Personal OS 2.0')
+    await user.click(screen.getByRole('button', { name: '更新项目' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('项目已更新')).toBeInTheDocument()
+    expect(data.getSnapshot().projects[0].name).toBe('Personal OS 2.0')
+
+    await user.click(screen.getByRole('button', { name: '删除 Personal OS 2.0' }))
+    expect(
+      screen.getByRole('alertdialog', { name: '删除项目' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(data.getSnapshot().projects).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: '删除 Personal OS 2.0' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+
+    expect(data.getSnapshot().projects).toHaveLength(0)
+    expect(screen.getByText('项目已删除')).toBeInTheDocument()
+  })
 })

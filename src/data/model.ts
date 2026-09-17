@@ -17,6 +17,8 @@ export type TaskInput = {
   time?: string
 }
 
+export type TaskUpdateInput = TaskInput
+
 export type ProjectStatus = 'planned' | 'active' | 'blocked' | 'done'
 
 export type Project = {
@@ -29,6 +31,8 @@ export type Project = {
 }
 
 export type ProjectInput = Omit<Project, 'id'>
+
+export type ProjectUpdateInput = ProjectInput
 
 export type TransactionKind = 'expense' | 'income' | 'transfer'
 
@@ -67,6 +71,8 @@ export type NewPaymentOrderInput = {
 export type TransactionInput = Omit<Transaction, 'id'> & {
   newOrder?: NewPaymentOrderInput
 }
+
+export type TransactionUpdateInput = Omit<TransactionInput, 'newOrder'>
 
 export type PaymentOrder = {
   id: string
@@ -135,9 +141,15 @@ export type StudyLog = {
   minutes: number
   date: string
   pathId?: string
+  platform?: LearningPlatform
+  resourceId?: string
+  lessonId?: string
+  note?: string
 }
 
 export type StudyLogInput = Omit<StudyLog, 'id'>
+
+export type StudyLogUpdateInput = StudyLogInput
 
 export type LearningPath = {
   id: string
@@ -146,6 +158,8 @@ export type LearningPath = {
 }
 
 export type LearningPathInput = Omit<LearningPath, 'id'>
+
+export type LearningPathUpdateInput = LearningPathInput
 
 export type LearningResourceKind = 'course' | 'book' | 'article' | 'video' | 'docs'
 
@@ -157,9 +171,73 @@ export type LearningResource = {
   title: string
   kind: LearningResourceKind
   status: LearningResourceStatus
+  platform?: LearningPlatform
+  sourceUrl?: string
+  externalId?: string
+  targetMinutes?: number
 }
 
 export type LearningResourceInput = Omit<LearningResource, 'id'>
+
+export type LearningResourceUpdateInput = LearningResourceInput
+
+export type LearningPlatform =
+  | 'bilibili'
+  | 'mooc'
+  | 'plaso'
+  | 'xiaoe'
+  | 'baiduPan'
+  | 'other'
+
+export type LearningLessonStatus = LearningResourceStatus
+
+export type LearningLesson = {
+  id: string
+  resourceId: string
+  title: string
+  sortOrder: number
+  status: LearningLessonStatus
+  expectedMinutes?: number
+  sourceUrl?: string
+}
+
+export type LearningLessonDraft = {
+  title: string
+  status?: LearningLessonStatus
+  expectedMinutes?: number
+  sourceUrl?: string
+}
+
+export type LearningLessonUpdateInput = {
+  title: string
+  status: LearningLessonStatus
+  expectedMinutes?: number
+  sourceUrl?: string
+}
+
+export type LearningNoteFolder = {
+  id: string
+  name: string
+  createdAt: string
+}
+
+export type LearningNote = {
+  id: string
+  folderId: string | null
+  title: string
+  content: string
+  tags: string[]
+  resourceId?: string | null
+  lessonId?: string | null
+  updatedAt: string
+}
+
+export type LearningNoteInput = Omit<
+  LearningNote,
+  'id' | 'updatedAt'
+> & {
+  id?: string
+}
 
 export type WeeklyReview = {
   id: string
@@ -170,6 +248,12 @@ export type WeeklyReview = {
 }
 
 export type WeeklyReviewInput = Omit<WeeklyReview, 'id'>
+
+export type WeeklyReviewUpdateInput = WeeklyReviewInput
+
+export type HealthMetricUpdateInput = HealthMetricInput
+
+export type SettingsCategoryKind = 'expense' | 'income'
 
 export type WorkoutKind =
   | 'glutes'
@@ -248,6 +332,9 @@ export type PersonalOSState = {
   monthlyBudgetCents: number
   learningPaths: LearningPath[]
   learningResources: LearningResource[]
+  learningLessons: LearningLesson[]
+  learningNoteFolders: LearningNoteFolder[]
+  learningNotes: LearningNote[]
   weeklyReviews: WeeklyReview[]
   workouts: Workout[]
   healthMetrics: HealthMetric[]
@@ -262,24 +349,70 @@ export type PersonalOSData = {
   getSnapshot: () => PersonalOSState
   toggleTask: (id: string) => void
   addTask: (input: TaskInput) => void
+  updateTask: (id: string, input: TaskUpdateInput) => void
+  deleteTask: (id: string) => void
   addQuickTask: (title: string) => void
   addProject: (input: ProjectInput) => void
+  updateProject: (id: string, input: ProjectUpdateInput) => void
+  deleteProject: (id: string) => void
   setProjectStatus: (id: string, status: ProjectStatus) => void
   recordTransaction: (input: TransactionInput) => void
+  updateTransaction: (id: string, input: TransactionUpdateInput) => void
+  deleteTransaction: (id: string) => void
   saveRecurringTransaction: (input: RecurringTransactionInput) => void
   setRecurringTransactionStatus: (id: string, active: boolean) => void
   recordRecurringTransaction: (id: string, date?: string) => void
+  deleteRecurringTransaction: (id: string) => void
+  updatePaymentOrder: (
+    id: string,
+    input: { name: string; expectedTotalCents: number },
+  ) => void
+  deletePaymentOrder: (id: string) => void
   importBillTransactions: (input: BillImportInput) => BillImportResult
   undoBillImport: (importId: string) => void
   recordStudyLog: (input: StudyLogInput) => void
+  updateStudyLog: (id: string, input: StudyLogUpdateInput) => void
+  deleteStudyLog: (id: string) => void
   updateMonthlyBudget: (monthlyBudgetCents: number) => void
   addLearningPath: (input: LearningPathInput) => void
+  updateLearningPath: (id: string, input: LearningPathUpdateInput) => void
+  deleteLearningPath: (id: string) => void
   addLearningResource: (input: LearningResourceInput) => void
+  updateLearningResource: (
+    id: string,
+    input: LearningResourceUpdateInput,
+  ) => void
+  deleteLearningResource: (id: string) => void
   setLearningResourceStatus: (id: string, status: LearningResourceStatus) => void
+  addLearningLessons: (
+    resourceId: string,
+    lessons: Array<LearningLessonDraft>,
+  ) => void
+  setLearningLessonStatus: (id: string, status: LearningLessonStatus) => void
+  updateLearningLesson: (
+    id: string,
+    input: LearningLessonUpdateInput,
+  ) => void
+  deleteLearningLesson: (id: string) => void
+  addLearningNoteFolder: (name: string) => void
+  updateLearningNoteFolder: (id: string, name: string) => void
+  deleteLearningNoteFolder: (id: string) => void
+  saveLearningNote: (input: LearningNoteInput) => void
+  deleteLearningNote: (id: string) => void
   saveWeeklyReview: (input: WeeklyReviewInput) => void
+  updateWeeklyReview: (id: string, input: WeeklyReviewUpdateInput) => void
+  deleteWeeklyReview: (id: string) => void
   recordWorkout: (input: WorkoutInput) => void
   updateWorkout: (id: string, input: WorkoutInput) => void
+  deleteWorkout: (id: string) => void
   setWorkoutStatus: (id: string, status: WorkoutStatus) => void
   saveHealthMetric: (input: HealthMetricInput) => void
+  updateHealthMetric: (id: string, input: HealthMetricUpdateInput) => void
+  deleteHealthMetric: (id: string) => void
   updateSettings: (input: PersonalOSSettingsInput) => void
+  renameCategory: (
+    kind: SettingsCategoryKind,
+    from: string,
+    to: string,
+  ) => void
 }

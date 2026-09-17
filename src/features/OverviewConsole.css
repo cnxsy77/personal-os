@@ -36,7 +36,7 @@
 .overview-panel-heading span {
   flex: 0 0 auto;
   color: #93a095;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .overview-kpi,
@@ -52,7 +52,7 @@
 .domain-progress-card p {
   margin: 0;
   color: #93a095;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .overview-kpi strong,
@@ -70,7 +70,7 @@
   display: block;
   margin-top: 8px;
   color: #a3afa5;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .domain-title {
@@ -92,7 +92,7 @@
   min-height: 28px;
   padding: 4px 10px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -188,7 +188,7 @@
   background: transparent;
   color: #95a29a;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -204,7 +204,7 @@
 
 .record-table-wrap table {
   width: 100%;
-  min-width: 700px;
+  min-width: 820px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -212,7 +212,7 @@
 .record-table-wrap th {
   padding: 0 12px 11px;
   color: #8b978e;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   text-align: left;
 }
@@ -265,7 +265,7 @@
   align-items: center;
   gap: 7px;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .record-status i {
@@ -327,7 +327,7 @@
 .decision-list p {
   margin: 6px 0 0 0;
   color: #93a095;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -381,7 +381,7 @@
 
 .completion-ring span {
   color: #a3afa5;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .overview-empty {
@@ -505,14 +505,22 @@
     content: "时间";
   }
 
-  .record-table-wrap td:nth-child(5)::before {
-    content: "状态";
+.record-table-wrap td:nth-child(5)::before {
+  content: "状态";
+}
+
+  .record-table-wrap td:nth-child(6)::before {
+    content: "操作";
   }
 
   .record-table-wrap td:not(:first-child)::before {
     flex: 0 0 auto;
     color: #8b978e;
-    font-size: 12px;
+    font-size: 14px;
+  }
+
+  .record-table-wrap td:nth-child(6) {
+    justify-content: flex-start;
   }
 
   .record-status {

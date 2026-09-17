@@ -214,7 +214,7 @@
 
 .plan-list li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 15px;
   min-height: 78px;
@@ -249,6 +249,24 @@
 .plan-list li.done .check {
   border-color: var(--accent);
   background: var(--accent);
+}
+
+.plan-list .edit {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #c5d0c7;
+  cursor: pointer;
+}
+
+.plan-list .edit:hover {
+  border-color: rgba(216, 250, 113, 0.38);
+  color: var(--accent);
 }
 
 .plan-list h4 {

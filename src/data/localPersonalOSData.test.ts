@@ -52,6 +52,46 @@ describe('local Personal OS data', () => {
     expect(data.getSnapshot()).toBe(before)
   })
 
+  it('updates planned tasks and keeps their completion state', () => {
+    const data = createLocalPersonalOSData({
+      now: () => new Date('2026-09-14T10:00:00'),
+      storage: createMemoryStorage(),
+    })
+
+    data.addTask({
+      title: '准备架构评审',
+      date: '2026-09-15',
+      category: 'work',
+      time: '09:30',
+    })
+    const taskId = data.getSnapshot().tasks.at(-1)?.id
+    expect(taskId).toBeTruthy()
+    data.toggleTask(taskId!)
+
+    data.updateTask(taskId!, {
+      title: '  主持架构评审  ',
+      date: '2026-09-16',
+      category: 'work',
+      time: '14:00',
+    })
+
+    const updatedTask = data.getSnapshot().tasks.at(-1)
+    expect(updatedTask).toMatchObject({
+      id: taskId,
+      title: '主持架构评审',
+      meta: '工作 · 14:00',
+      date: '2026-09-16',
+      time: '14:00',
+      category: 'work',
+      done: true,
+    })
+    expect(() => data.updateTask('missing-task', {
+      title: '不存在的任务',
+      date: '2026-09-16',
+      category: 'work',
+    })).toThrow('计划任务不存在')
+  })
+
   it('persists workbench projects and status changes', () => {
     const storage = createMemoryStorage()
     const data = createLocalPersonalOSData({ storage })
@@ -204,6 +244,281 @@ describe('local Personal OS data', () => {
     })
   })
 
+  it('updates and deletes records while retaining linked descendants', () => {
+    const data = createLocalPersonalOSData({
+      now: () => new Date('2026-09-17T10:00:00'),
+      storage: createMemoryStorage(),
+    })
+
+    data.addProject({
+      name: '原项目',
+      goal: '原目标',
+      status: 'active',
+      nextAction: '原动作',
+      dueDate: '2026-09-20',
+    })
+    const projectId = data.getSnapshot().projects[0].id
+    data.updateProject(projectId, {
+      name: '更新项目',
+      goal: '更新目标',
+      status: 'blocked',
+      nextAction: '更新动作',
+      dueDate: '2026-09-21',
+    })
+    expect(data.getSnapshot().projects[0]).toMatchObject({
+      name: '更新项目',
+      status: 'blocked',
+    })
+    data.deleteProject(projectId)
+    expect(data.getSnapshot().projects).not.toContainEqual(
+      expect.objectContaining({ id: projectId }),
+    )
+    expect(() => data.deleteProject(projectId)).toThrow('项目不存在')
+
+    data.recordTransaction({
+      kind: 'expense',
+      amountCents: 10000,
+      category: '数码',
+      date: '2026-09-01',
+      newOrder: { name: '相机订单', expectedTotalCents: 20000 },
+      stage: 'deposit',
+      source: 'manual',
+    })
+    const orderId = data.getSnapshot().paymentOrders[0].id
+    const expense = data.getSnapshot().transactions[0]
+    data.recordTransaction({
+      kind: 'income',
+      amountCents: 1000,
+      category: '退款',
+      date: '2026-09-02',
+      tag: 'refund',
+      relatedTransactionId: expense.id,
+      source: 'manual',
+    })
+
+    data.updateTransaction(expense.id, {
+      kind: expense.kind,
+      amountCents: 12000,
+      category: '电子',
+      date: expense.date,
+      orderId,
+      stage: 'deposit',
+      note: '更新后的支出',
+      source: 'manual',
+    })
+    expect(
+      data.getSnapshot().transactions.find((item) => item.id === expense.id),
+    ).toMatchObject({
+      amountCents: 12000,
+      note: '更新后的支出',
+      category: '电子',
+      orderId,
+      stage: 'deposit',
+    })
+
+    data.deleteTransaction(expense.id)
+    const refund = data.getSnapshot().transactions[0]
+    expect(refund.relatedTransactionId).toBeUndefined()
+
+    data.saveRecurringTransaction({
+      name: '订阅',
+      kind: 'expense',
+      amountCents: 2000,
+      category: '软件',
+      frequency: 'monthly',
+      nextDate: '2026-10-01',
+    })
+    const recurringId = data.getSnapshot().recurringTransactions[0].id
+    data.recordRecurringTransaction(recurringId, '2026-10-01')
+    data.deleteRecurringTransaction(recurringId)
+    expect(data.getSnapshot().transactions[0].recurringId).toBeUndefined()
+
+    data.updatePaymentOrder(orderId, {
+      name: '相机订单更新',
+      expectedTotalCents: 24000,
+    })
+    data.deletePaymentOrder(orderId)
+    expect(data.getSnapshot().paymentOrders).toHaveLength(0)
+  })
+
+  it('updates and deletes learning records while preserving linked notes and logs', () => {
+    const data = createLocalPersonalOSData({
+      storage: createMemoryStorage(),
+    })
+
+    data.addLearningPath({ title: '前端路径', targetMinutes: 600 })
+    const pathId = data.getSnapshot().learningPaths[0].id
+    data.addLearningResource({
+      pathId,
+      title: 'React 课程',
+      kind: 'course',
+      status: 'doing',
+      platform: 'bilibili',
+      sourceUrl: 'https://www.bilibili.com/video/BV1q5YL69E44/',
+    })
+    const resourceId = data.getSnapshot().learningResources[0].id
+    data.addLearningLessons(resourceId, [
+      { title: '第一课', expectedMinutes: 20 },
+    ])
+    const lessonId = data.getSnapshot().learningLessons[0].id
+    data.recordStudyLog({
+      topic: 'React',
+      minutes: 20,
+      date: '2026-09-17',
+      pathId,
+      resourceId,
+      lessonId,
+    })
+    const logId = data.getSnapshot().studyLogs[0].id
+    data.addLearningNoteFolder('React')
+    const folderId = data.getSnapshot().learningNoteFolders[0].id
+    data.saveLearningNote({
+      folderId,
+      title: 'Hooks',
+      content: 'useState',
+      tags: ['react'],
+      resourceId,
+      lessonId,
+    })
+    const noteId = data.getSnapshot().learningNotes[0].id
+
+    data.updateLearningPath(pathId, { title: '前端进阶', targetMinutes: 800 })
+    data.updateLearningResource(resourceId, {
+      pathId,
+      title: 'React 进阶',
+      kind: 'course',
+      status: 'doing',
+      platform: 'bilibili',
+    })
+    data.updateLearningLesson(lessonId, {
+      title: '第一课更新',
+      status: 'done',
+      expectedMinutes: 30,
+    })
+    data.updateStudyLog(logId, {
+      topic: 'React 进阶',
+      minutes: 30,
+      date: '2026-09-17',
+      pathId,
+      resourceId,
+      lessonId,
+    })
+    data.updateLearningNoteFolder(folderId, 'React 笔记')
+
+    expect(data.getSnapshot().learningPaths[0]).toMatchObject({
+      title: '前端进阶',
+      targetMinutes: 800,
+    })
+    expect(data.getSnapshot().learningResources[0]).toMatchObject({
+      title: 'React 进阶',
+    })
+    expect(data.getSnapshot().learningLessons[0]).toMatchObject({
+      title: '第一课更新',
+      status: 'done',
+      expectedMinutes: 30,
+    })
+
+    data.deleteLearningResource(resourceId)
+    expect(data.getSnapshot().learningLessons).toHaveLength(0)
+    expect(data.getSnapshot().studyLogs[0]).toMatchObject({
+      topic: 'React 进阶',
+      minutes: 30,
+    })
+    expect(data.getSnapshot().studyLogs[0].resourceId).toBeUndefined()
+    expect(data.getSnapshot().studyLogs[0].lessonId).toBeUndefined()
+    expect(data.getSnapshot().learningNotes[0].resourceId).toBeNull()
+
+    data.saveWeeklyReview({
+      weekStartDate: '2026-09-14',
+      wins: '完成课程',
+      blockers: '',
+      nextFocus: '练习',
+    })
+    const reviewId = data.getSnapshot().weeklyReviews[0].id
+    data.updateWeeklyReview(reviewId, {
+      weekStartDate: '2026-09-14',
+      wins: '完成进阶课程',
+      blockers: '',
+      nextFocus: '练习',
+    })
+    data.deleteLearningNote(data.getSnapshot().learningNotes[0].id)
+    data.deleteStudyLog(logId)
+    data.deleteWeeklyReview(reviewId)
+
+    expect(data.getSnapshot().learningNotes).not.toContainEqual(
+      expect.objectContaining({ id: noteId }),
+    )
+    expect(data.getSnapshot().studyLogs).not.toContainEqual(
+      expect.objectContaining({ id: logId }),
+    )
+    expect(data.getSnapshot().weeklyReviews).not.toContainEqual(
+      expect.objectContaining({ id: reviewId }),
+    )
+  })
+
+  it('updates, deletes health records, and renames settings categories', () => {
+    const data = createLocalPersonalOSData({
+      storage: createMemoryStorage(),
+    })
+
+    data.recordWorkout({
+      date: '2026-09-17',
+      kind: 'chest',
+      kinds: ['chest', 'shoulders'],
+      durationMinutes: 60,
+      notes: '',
+      focus: '胸肩',
+    })
+    const workoutId = data.getSnapshot().workouts[0].id
+    data.updateWorkout(workoutId, {
+      date: '2026-09-17',
+      kind: 'back',
+      kinds: ['back'],
+      durationMinutes: 45,
+      notes: '更新',
+      status: 'completed',
+    })
+    expect(data.getSnapshot().workouts[0]).toMatchObject({
+      kinds: ['back'],
+      durationMinutes: 45,
+    })
+    data.deleteWorkout(workoutId)
+    expect(data.getSnapshot().workouts).toHaveLength(0)
+
+    data.saveHealthMetric({
+      date: '2026-09-17',
+      sleepHours: 7,
+      weightKg: 70,
+      condition: 'good',
+      menstruationFlow: 'light',
+      menstruationSymptoms: ['fatigue'],
+    })
+    const metricId = data.getSnapshot().healthMetrics[0].id
+    data.updateHealthMetric(metricId, {
+      date: '2026-09-17',
+      sleepHours: 8,
+      weightKg: 69,
+      condition: 'great',
+      menstruationFlow: 'medium',
+      menstruationSymptoms: ['fatigue', 'cramps'],
+    })
+    expect(data.getSnapshot().healthMetrics[0]).toMatchObject({
+      sleepHours: 8,
+      weightKg: 69,
+      menstruationSymptoms: ['fatigue', 'cramps'],
+    })
+    data.deleteHealthMetric(metricId)
+    expect(data.getSnapshot().healthMetrics).toHaveLength(0)
+
+    const oldExpenseCategory =
+      data.getSnapshot().settings.expenseCategories[0]
+    data.renameCategory('expense', oldExpenseCategory, '日常开销')
+    expect(data.getSnapshot().settings.expenseCategories).toContain('日常开销')
+    expect(data.getSnapshot().settings.expenseCategories).not.toContain(
+      oldExpenseCategory,
+    )
+  })
+
   it('imports bills, skips duplicates, and undoes only the imported batch', () => {
     const storage = createMemoryStorage()
     const data = createLocalPersonalOSData({ storage })
@@ -313,6 +628,9 @@ describe('local Personal OS data', () => {
     expect(migrated.getSnapshot().studyLogs).toEqual([])
     expect(migrated.getSnapshot().learningPaths).toEqual([])
     expect(migrated.getSnapshot().learningResources).toEqual([])
+    expect(migrated.getSnapshot().learningLessons).toEqual([])
+    expect(migrated.getSnapshot().learningNoteFolders).toEqual([])
+    expect(migrated.getSnapshot().learningNotes).toEqual([])
     expect(migrated.getSnapshot().weeklyReviews).toEqual([])
     expect(migrated.getSnapshot().workouts).toEqual([])
     expect(migrated.getSnapshot().healthMetrics).toEqual([])
@@ -440,6 +758,107 @@ describe('local Personal OS data', () => {
 
     expect(data.getSnapshot().weeklyReviews).toHaveLength(1)
     expect(data.getSnapshot().weeklyReviews[0].wins).toBe('完成预算和复盘')
+  })
+
+  it('persists multi-platform courses, lessons, and linked study notes', () => {
+    const storage = createMemoryStorage()
+    const data = createLocalPersonalOSData({ storage })
+
+    data.addLearningResource({
+      pathId: null,
+      title: '前端工程化实战',
+      kind: 'course',
+      status: 'doing',
+      targetMinutes: 300,
+      sourceUrl:
+        'https://www.bilibili.com/video/BV1q5YL69E44/?vd_source=test',
+    })
+    const courseId = data.getSnapshot().learningResources[0].id
+    data.addLearningLessons(courseId, [
+      { title: '工程化总览', expectedMinutes: 20 },
+      { title: '构建工具对比 | 35' },
+    ])
+    const lessonId = data.getSnapshot().learningLessons[0].id
+    data.setLearningLessonStatus(lessonId, 'done')
+
+    data.addLearningNoteFolder('课程笔记')
+    const folderId = data.getSnapshot().learningNoteFolders[0].id
+    data.saveLearningNote({
+      title: '第一课要点',
+      content: '# 核心结论\n\n先明确构建边界。',
+      tags: ['前端', '构建'],
+      folderId,
+      resourceId: courseId,
+      lessonId,
+    })
+
+    data.recordStudyLog({
+      topic: '工程化总览',
+      minutes: 25,
+      date: '2026-09-17',
+      platform: 'bilibili',
+      resourceId: courseId,
+      lessonId,
+      note: '重点理解依赖图',
+    })
+
+    const reloaded = createLocalPersonalOSData({ storage })
+    const snapshot = reloaded.getSnapshot()
+
+    expect(snapshot.learningResources[0]).toMatchObject({
+      id: courseId,
+      platform: 'bilibili',
+      externalId: 'BV1q5YL69E44',
+      targetMinutes: 300,
+    })
+    expect(snapshot.learningLessons).toHaveLength(2)
+    expect(snapshot.learningLessons[0]).toMatchObject({
+      title: '工程化总览',
+      sortOrder: 1,
+      status: 'done',
+      expectedMinutes: 20,
+    })
+    expect(snapshot.learningNotes[0]).toMatchObject({
+      title: '第一课要点',
+      folderId,
+      resourceId: courseId,
+      lessonId,
+      tags: ['前端', '构建'],
+    })
+    expect(snapshot.studyLogs[0]).toMatchObject({
+      platform: 'bilibili',
+      resourceId: courseId,
+      lessonId,
+      note: '重点理解依赖图',
+    })
+  })
+
+  it('rejects invalid learning lessons, notes, and logs without changing state', () => {
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    const before = data.getSnapshot()
+
+    expect(() => data.addLearningLessons('missing', [
+      { title: '课时' },
+    ])).toThrow('学习课程不存在')
+    expect(() => data.addLearningNoteFolder('  ')).toThrow(
+      '笔记文件夹名称不能为空',
+    )
+    expect(() => data.saveLearningNote({
+      title: '空笔记',
+      content: ' ',
+      tags: [],
+      folderId: null,
+      resourceId: null,
+      lessonId: null,
+    })).toThrow('笔记内容不能为空')
+    expect(() => data.recordStudyLog({
+      topic: '无效课时',
+      minutes: 30,
+      date: '2026-09-17',
+      lessonId: 'missing',
+    })).toThrow('学习课时不存在')
+
+    expect(data.getSnapshot()).toBe(before)
   })
 
   it('rejects invalid learning paths without changing state', () => {

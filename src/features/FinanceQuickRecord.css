@@ -166,7 +166,7 @@
 
 .finance-panel .transaction-date-group li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 14px;
   align-items: center;
   min-height: 72px;
@@ -522,10 +522,16 @@
   padding: 14px;
 }
 
+.order-progress .wide {
+  display: grid;
+  gap: 10px;
+}
+
 .order-progress > div:first-child {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -629,6 +635,11 @@
 .recurring-actions {
   display: grid;
   gap: 8px;
+  justify-items: end;
+}
+
+.recurring-actions .record-actions {
+  justify-content: end;
 }
 
 .recurring-actions button,

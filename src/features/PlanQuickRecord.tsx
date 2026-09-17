@@ -1,13 +1,16 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   AlertTriangle,
   CalendarClock,
   Check,
+  Pencil,
   Plus,
   Target,
+  Trash2,
 } from 'lucide-react'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { RecordDialog } from '../components/RecordDialog'
-import type { Task, TaskCategory, TaskInput } from '../data/model'
+import type { Task, TaskCategory, TaskInput, TaskUpdateInput } from '../data/model'
 import {
   filterTasks,
   groupTasks,
@@ -26,7 +29,10 @@ type Props = {
   onDialogClose: () => void
   onSaved: (message: string) => void
   onTaskSubmit: (input: TaskInput) => void
+  onTaskUpdate: (id: string, input: TaskUpdateInput) => void
+  onTaskDelete: (id: string) => void
   onTaskToggle: (id: string) => void
+  externalEditingTask?: Task | null
 }
 
 const taskCategoryLabels: Record<TaskCategory, string> = {
@@ -65,7 +71,10 @@ export function PlanQuickRecord({
   onDialogClose,
   onSaved,
   onTaskSubmit,
+  onTaskUpdate,
+  onTaskDelete,
   onTaskToggle,
+  externalEditingTask,
 }: Props) {
   const [now] = useState(() => new Date())
   const today = toDateKey(now)
@@ -80,6 +89,22 @@ export function PlanQuickRecord({
     'all',
   )
   const [search, setSearch] = useState('')
+  const [editingTaskId, setEditingTaskId] = useState<Task['id'] | null>(null)
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null)
+  const externalEditingTaskId = externalEditingTask?.id
+
+  useEffect(() => {
+    if (!dialogOpen || !externalEditingTask) {
+      return
+    }
+
+    setTitle(externalEditingTask.title)
+    setDate(externalEditingTask.date ?? today)
+    setCategory(externalEditingTask.category ?? 'work')
+    setTime(externalEditingTask.time ?? '')
+    setError('')
+    setEditingTaskId(externalEditingTask.id)
+  }, [dialogOpen, externalEditingTask, externalEditingTaskId, today])
 
   const filters = useMemo(() => ({
     range,
@@ -105,11 +130,23 @@ export function PlanQuickRecord({
 
   function openDialog() {
     setError('')
+    setEditingTaskId(null)
+    onDialogOpen()
+  }
+
+  function openEditDialog(task: Task) {
+    setTitle(task.title)
+    setDate(task.date ?? today)
+    setCategory(task.category ?? 'work')
+    setTime(task.time ?? '')
+    setError('')
+    setEditingTaskId(task.id)
     onDialogOpen()
   }
 
   function closeDialog() {
     setError('')
+    setEditingTaskId(null)
     onDialogClose()
   }
 
@@ -127,19 +164,25 @@ export function PlanQuickRecord({
       return
     }
 
-    onTaskSubmit({
+    const taskInput = {
       title: normalizedTitle,
       date,
       category,
       time: time || undefined,
-    })
-    setTitle('')
-    setTime('')
+    }
+
+    if (editingTaskId) {
+      onTaskUpdate(editingTaskId, taskInput)
+    } else {
+      onTaskSubmit(taskInput)
+    }
     setError('')
     setRange(date === today ? 'today' : 'all')
     onDialogClose()
-    onSaved('计划已保存')
+    onSaved(editingTaskId ? '计划已更新' : '计划已保存')
   }
+
+  const isEditing = editingTaskId !== null
 
   const taskDialog = (
     <RecordDialog
@@ -148,7 +191,7 @@ export function PlanQuickRecord({
       onClose={closeDialog}
       open={dialogOpen}
       tabs={[{ id: 'task', label: '计划任务' }]}
-      title="添加计划"
+      title={isEditing ? '编辑计划' : '添加计划'}
     >
       <form onSubmit={submit} className="plan-form">
         <div className="plan-fields">
@@ -193,7 +236,7 @@ export function PlanQuickRecord({
               onChange={(event) => setTime(event.target.value)}
             />
           </div>
-          <button type="submit">保存计划</button>
+        <button type="submit">{isEditing ? '更新计划' : '保存计划'}</button>
         </div>
         {error ? <p role="alert">{error}</p> : null}
       </form>
@@ -352,6 +395,24 @@ export function PlanQuickRecord({
                           ) : null}
                         </div>
                       </div>
+                      <div className="record-actions">
+                        <button
+                          className="edit"
+                          type="button"
+                          onClick={() => openEditDialog(task)}
+                          aria-label={`编辑 ${task.title}`}
+                        >
+                          <Pencil size={16} aria-hidden="true" />
+                        </button>
+                        <button
+                          className="delete"
+                          type="button"
+                          onClick={() => setDeletingTask(task)}
+                          aria-label={`删除 ${task.title}`}
+                        >
+                          <Trash2 size={16} aria-hidden="true" />
+                        </button>
+                      </div>
                     </li>
                   )
                 })}
@@ -450,6 +511,20 @@ export function PlanQuickRecord({
           </p>
         </section>
       </aside>
+
+      <ConfirmDialog
+        description={`删除“${deletingTask?.title ?? ''}”后无法恢复。`}
+        onCancel={() => setDeletingTask(null)}
+        onConfirm={() => {
+          if (deletingTask) {
+            onTaskDelete(deletingTask.id)
+          }
+          setDeletingTask(null)
+          onSaved('计划已删除')
+        }}
+        open={deletingTask !== null}
+        title="删除计划"
+      />
 
       {taskDialog}
     </div>

@@ -13,7 +13,8 @@ type Props = {
   incomeCategories: string[]
   orders: PaymentOrder[]
   transactions: Transaction[]
-  onSubmit: (input: TransactionInput) => void
+  editingTransaction?: Transaction | null
+  onSubmit: (input: TransactionInput, transactionId?: string) => void
 }
 
 export function FinanceTransactionForm({
@@ -21,21 +22,24 @@ export function FinanceTransactionForm({
   incomeCategories,
   orders,
   transactions,
+  editingTransaction,
   onSubmit,
 }: Props) {
   const now = new Date()
   const today = toDateKey(now)
-  const [kind, setKind] = useState<TransactionKind>('expense')
-  const [date, setDate] = useState(today)
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState('餐饮')
-  const [tag, setTag] = useState<TransactionTag>('normal')
-  const [note, setNote] = useState('')
-  const [orderMode, setOrderMode] = useState<'none' | 'new' | 'existing'>('none')
+  const [kind, setKind] = useState<TransactionKind>(editingTransaction?.kind ?? 'expense')
+  const [date, setDate] = useState(editingTransaction?.date ?? today)
+  const [amount, setAmount] = useState(editingTransaction ? String(editingTransaction.amountCents / 100) : '')
+  const [category, setCategory] = useState(editingTransaction?.category ?? '餐饮')
+  const [tag, setTag] = useState<TransactionTag>(editingTransaction?.tag ?? 'normal')
+  const [note, setNote] = useState(editingTransaction?.note ?? '')
+  const [orderMode, setOrderMode] = useState<'none' | 'new' | 'existing'>(
+    editingTransaction?.orderId ? 'existing' : 'none',
+  )
   const [orderName, setOrderName] = useState('')
   const [orderTotal, setOrderTotal] = useState('')
-  const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? '')
-  const [stage, setStage] = useState<'deposit' | 'final' | 'full'>('full')
+  const [selectedOrderId, setSelectedOrderId] = useState(editingTransaction?.orderId ?? orders[0]?.id ?? '')
+  const [stage, setStage] = useState<'deposit' | 'final' | 'full'>(editingTransaction?.stage ?? 'full')
   const [relatedTransactionId, setRelatedTransactionId] = useState('')
   const [error, setError] = useState('')
 
@@ -81,7 +85,7 @@ export function FinanceTransactionForm({
     }
 
     try {
-      onSubmit({
+      const input: TransactionInput = {
         kind,
         amountCents: cents,
         category: activeCategory,
@@ -104,7 +108,8 @@ export function FinanceTransactionForm({
         ...(orderMode === 'existing' && selectedOrderId
           ? { orderId: selectedOrderId, stage }
           : {}),
-      })
+      }
+      onSubmit(input, editingTransaction?.id)
       setAmount('')
       setNote('')
       setError('')
@@ -301,7 +306,7 @@ export function FinanceTransactionForm({
           />
         </div>
 
-        <button type="submit">记录</button>
+        <button type="submit">{editingTransaction ? '更新记录' : '记录'}</button>
       </div>
       {error ? <p role="alert">{error}</p> : null}
     </form>

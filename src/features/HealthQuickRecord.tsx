@@ -12,10 +12,12 @@ import {
   Pencil,
   Plus,
   Timer,
+  Trash2,
   Wind,
   X,
 } from 'lucide-react'
 import { RecordDialog } from '../components/RecordDialog'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import type {
   HealthCondition,
   HealthMetric,
@@ -67,6 +69,9 @@ type Props = {
   onWorkoutSubmit: (input: WorkoutInput) => void
   onWorkoutUpdate: (id: string, input: WorkoutInput) => void
   onMetricSubmit: (input: HealthMetricInput) => void
+  onWorkoutDelete: (id: string) => void
+  onMetricUpdate: (id: string, input: HealthMetricInput) => void
+  onMetricDelete: (id: string) => void
   weeklyWorkoutTarget: number
 }
 
@@ -107,6 +112,9 @@ export function HealthQuickRecord({
   onWorkoutSubmit,
   onWorkoutUpdate,
   onMetricSubmit,
+  onWorkoutDelete,
+  onMetricUpdate,
+  onMetricDelete,
   weeklyWorkoutTarget,
 }: Props) {
   const now = new Date()
@@ -138,6 +146,9 @@ export function HealthQuickRecord({
   const [workoutKindOpen, setWorkoutKindOpen] = useState(false)
   const [symptomSelectOpen, setSymptomSelectOpen] = useState(false)
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null)
+  const [editingMetric, setEditingMetric] = useState<HealthMetric | null>(null)
+  const [deletingWorkout, setDeletingWorkout] = useState<Workout | null>(null)
+  const [deletingMetric, setDeletingMetric] = useState<HealthMetric | null>(null)
   const workoutKindRef = useRef<HTMLDivElement>(null)
   const symptomSelectRef = useRef<HTMLDivElement>(null)
   const [metricDate, setMetricDate] = useState(() => toDateKey(now))
@@ -202,11 +213,25 @@ export function HealthQuickRecord({
   }, [symptomSelectOpen, workoutKindOpen])
 
   function openDialog(tab = dialogTab) {
+    setEditingMetric(null)
     setWorkoutError('')
     setMetricError('')
     setWorkoutKindOpen(false)
     setSymptomSelectOpen(false)
     onDialogOpen(tab)
+  }
+
+  function startMetricEdit(metric: HealthMetric) {
+    setEditingMetric(metric)
+    setMetricDate(metric.date)
+    setSleepHours(String(metric.sleepHours))
+    setWeight(metric.weightKg === null ? '' : String(metric.weightKg))
+    setCondition(metric.condition)
+    setMenstruationFlow(metric.menstruationFlow ?? 'none')
+    setMenstruationSymptoms(metric.menstruationSymptoms ?? [])
+    setMenstruationNote(metric.menstruationNote ?? '')
+    setMetricError('')
+    onDialogOpen('metric')
   }
 
   function startWorkoutEdit(workout: Workout) {
@@ -362,6 +387,9 @@ export function HealthQuickRecord({
     setWorkoutKindOpen(false)
     setSymptomSelectOpen(false)
     setEditingWorkout(null)
+    setEditingMetric(null)
+    setDeletingWorkout(null)
+    setDeletingMetric(null)
     setExerciseDragIndex(null)
     setExerciseDragOverIndex(null)
     onDialogClose()
@@ -435,7 +463,7 @@ export function HealthQuickRecord({
       return
     }
 
-    onMetricSubmit({
+    const metricInput: HealthMetricInput = {
       date: metricDate,
       sleepHours: normalizedSleepHours,
       weightKg: normalizedWeight,
@@ -443,7 +471,13 @@ export function HealthQuickRecord({
       menstruationFlow,
       menstruationSymptoms,
       menstruationNote,
-    })
+    }
+
+    if (editingMetric) {
+      onMetricUpdate(editingMetric.id, metricInput)
+    } else {
+      onMetricSubmit(metricInput)
+    }
     setSleepHours('')
     setWeight('')
     setCondition('good')
@@ -451,8 +485,9 @@ export function HealthQuickRecord({
     setMenstruationSymptoms([])
     setMenstruationNote('')
     setMetricError('')
+    setEditingMetric(null)
     closeDialog()
-    onSaved('身体指标已保存')
+    onSaved(editingMetric ? '身体指标已更新' : '身体指标已保存')
   }
 
   const healthDialog = (
@@ -466,7 +501,13 @@ export function HealthQuickRecord({
         { id: 'workout', label: '训练' },
         { id: 'metric', label: '身体指标' },
       ]}
-      title={editingWorkout ? '编辑训练记录' : '添加锻炼记录'}
+      title={
+        editingWorkout
+          ? '编辑训练记录'
+          : editingMetric
+            ? '编辑身体指标'
+            : '添加锻炼记录'
+      }
     >
       {dialogTab === 'workout' ? (
         <form onSubmit={submitWorkout} className="health-form">
@@ -1130,6 +1171,16 @@ export function HealthQuickRecord({
                     <Pencil size={15} />
                     编辑
                   </button>
+                  <div className="record-actions">
+                    <button
+                      aria-label={`删除${workout.focus || workoutKindLabels[workout.kind]}`}
+                      className="delete"
+                      onClick={() => setDeletingWorkout(workout)}
+                      type="button"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
               </li>
             )
@@ -1230,7 +1281,26 @@ export function HealthQuickRecord({
                       <p>{metric.menstruationNote}</p>
                     ) : null}
                   </div>
-                  <b>{healthConditionLabels[metric.condition]}</b>
+                  <div className="metric-side">
+                    <b>{healthConditionLabels[metric.condition]}</b>
+                    <div className="record-actions">
+                      <button
+                        aria-label={`编辑${formatDate(metric.date)}身体指标`}
+                        onClick={() => startMetricEdit(metric)}
+                        type="button"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        aria-label={`删除${formatDate(metric.date)}身体指标`}
+                        className="delete"
+                        onClick={() => setDeletingMetric(metric)}
+                        type="button"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
                 </li>
               ))}
           </ul>
@@ -1238,6 +1308,36 @@ export function HealthQuickRecord({
       </aside>
 
       {healthDialog}
+
+      <ConfirmDialog
+        description={`删除“${formatDate(deletingWorkout?.date ?? '')} ${
+          deletingWorkout?.focus || workoutKindLabels[deletingWorkout?.kind ?? 'glutes']
+        }”训练后无法恢复。`}
+        onCancel={() => setDeletingWorkout(null)}
+        onConfirm={() => {
+          if (deletingWorkout) {
+            onWorkoutDelete(deletingWorkout.id)
+          }
+          setDeletingWorkout(null)
+          onSaved('训练已删除')
+        }}
+        open={deletingWorkout !== null}
+        title="删除训练"
+      />
+
+      <ConfirmDialog
+        description={`删除${formatDate(deletingMetric?.date ?? '')}的身体指标后无法恢复。`}
+        onCancel={() => setDeletingMetric(null)}
+        onConfirm={() => {
+          if (deletingMetric) {
+            onMetricDelete(deletingMetric.id)
+          }
+          setDeletingMetric(null)
+          onSaved('身体指标已删除')
+        }}
+        open={deletingMetric !== null}
+        title="删除身体指标"
+      />
     </div>
   )
 }

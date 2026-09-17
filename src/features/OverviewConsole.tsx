@@ -5,9 +5,12 @@ import {
   CircleAlert,
   Dumbbell,
   FolderGit2,
+  Pencil,
   Target,
+  Trash2,
   Wallet,
 } from 'lucide-react'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import type { PersonalOSState, Task } from '../data/model'
 import {
   getCompletedWorkoutsThisWeek,
@@ -44,6 +47,8 @@ type Decision = {
 type OverviewConsoleProps = {
   state: PersonalOSState
   onTaskToggle: (id: string) => void
+  onTaskEdit?: (task: Task) => void
+  onTaskDelete: (id: string) => void
 }
 
 const filterLabels: Record<RecordFilter, string> = {
@@ -65,8 +70,14 @@ const domainNames: Record<OverviewRecord['domain'], string> = {
   project: '工作台',
 }
 
-export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
+export function OverviewConsole({
+  state,
+  onTaskToggle,
+  onTaskEdit,
+  onTaskDelete,
+}: OverviewConsoleProps) {
   const [filter, setFilter] = useState<RecordFilter>('all')
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null)
   const now = new Date()
   const today = toDateKey(now)
   const todayTasks = state.tasks.filter((task) => task.date === today)
@@ -195,6 +206,7 @@ export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
                     <th>关键数据</th>
                     <th>时间</th>
                     <th>状态</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -226,6 +238,27 @@ export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
                           <i aria-hidden="true" />
                           {record.status}
                         </span>
+                      </td>
+                      <td>
+                        {record.task ? (
+                          <div className="record-actions">
+                            <button
+                              aria-label={`编辑${record.title}`}
+                              onClick={() => onTaskEdit?.(record.task as Task)}
+                              type="button"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              aria-label={`删除${record.title}`}
+                              className="delete"
+                              onClick={() => setDeletingTask(record.task as Task)}
+                              type="button"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -297,7 +330,21 @@ export function OverviewConsole({ state, onTaskToggle }: OverviewConsoleProps) {
             </ul>
           </section>
         </div>
+
       </div>
+
+      <ConfirmDialog
+        description={`删除“${deletingTask?.title ?? ''}”后无法恢复。`}
+        onCancel={() => setDeletingTask(null)}
+        onConfirm={() => {
+          if (deletingTask) {
+            onTaskDelete(deletingTask.id)
+          }
+          setDeletingTask(null)
+        }}
+        open={deletingTask !== null}
+        title="删除任务"
+      />
     </div>
   )
 }

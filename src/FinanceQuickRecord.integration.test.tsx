@@ -90,6 +90,39 @@ describe('finance quick capture', () => {
     expect(data.getSnapshot().transactions).toHaveLength(1)
   })
 
+  it('edits and deletes a transaction with confirmation', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '记账' }))
+    await user.click(screen.getByRole('button', { name: '编辑 餐饮' }))
+    expect(
+      screen.getByRole('dialog', { name: '编辑记账记录' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('金额')).toHaveValue(36)
+
+    await user.clear(screen.getByLabelText('金额'))
+    await user.type(screen.getByLabelText('金额'), '40')
+    await user.click(screen.getByRole('button', { name: '更新记录' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('支出已更新')).toBeInTheDocument()
+    expect(data.getSnapshot().transactions[0].amountCents).toBe(4000)
+
+    await user.click(screen.getByRole('button', { name: '删除 餐饮' }))
+    expect(
+      screen.getByRole('alertdialog', { name: '删除记账记录' }),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(data.getSnapshot().transactions).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: '删除 餐饮' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+    expect(data.getSnapshot().transactions).toHaveLength(0)
+    expect(screen.getByText('记账记录已删除')).toBeInTheDocument()
+  })
+
   it('links payment stages to one order and shows its progress', async () => {
     const user = userEvent.setup()
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })

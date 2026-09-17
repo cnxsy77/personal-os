@@ -4,6 +4,13 @@ import type {
   HealthMetricInput,
   LearningPath,
   LearningPathInput,
+  LearningLesson,
+  LearningLessonDraft,
+  LearningLessonUpdateInput,
+  LearningLessonStatus,
+  LearningNoteFolder,
+  LearningNoteInput,
+  LearningNote,
   LearningResource,
   LearningResourceInput,
   LearningResourceStatus,
@@ -16,10 +23,12 @@ import type {
   Project,
   ProjectInput,
   ProjectStatus,
+  SettingsCategoryKind,
   BillImport,
   BillImportInput,
   BillImportResult,
   BillSource,
+  HealthMetricUpdateInput,
   PaymentOrder,
   PaymentStage,
   RecurringFrequency,
@@ -28,13 +37,17 @@ import type {
   TransactionTag,
   StudyLog,
   StudyLogInput,
+  StudyLogUpdateInput,
   TaskCategory,
   TaskInput,
+  TaskUpdateInput,
   TransactionInput,
+  TransactionUpdateInput,
   Transaction,
   Task,
   WeeklyReview,
   WeeklyReviewInput,
+  WeeklyReviewUpdateInput,
   Workout,
   WorkoutExercise,
   WorkoutInput,
@@ -43,6 +56,10 @@ import type {
   SelectableWorkoutKind,
 } from './model'
 import { defaultPersonalOSSettings } from '../utils/settings'
+import {
+  isLearningPlatform,
+  parseLearningSource,
+} from '../utils/learningSource'
 
 const storageKey = 'personal-os:v1'
 
@@ -105,7 +122,48 @@ export function createLocalPersonalOSData(
     commit({ ...state, tasks: [...state.tasks, task] })
   }
 
+  function deleteTask(id: string) {
+    if (!state.tasks.some((task) => task.id === id)) {
+      throw new Error('计划任务不存在')
+    }
+
+    commit({
+      ...state,
+      tasks: state.tasks.filter((task) => task.id !== id),
+    })
+  }
+
   function addProject(input: ProjectInput) {
+    const validatedInput = validateProjectInput(input)
+
+    commit({
+      ...state,
+      projects: [
+        {
+          id: createId(),
+          ...validatedInput,
+        },
+        ...state.projects,
+      ],
+    })
+  }
+
+  function setProjectStatus(id: string, status: ProjectStatus) {
+    const exists = state.projects.some((project) => project.id === id)
+
+    if (!exists) {
+      throw new Error('项目不存在')
+    }
+
+    commit({
+      ...state,
+      projects: state.projects.map((project) =>
+        project.id === id ? { ...project, status } : project,
+      ),
+    })
+  }
+
+  function validateProjectInput(input: ProjectInput) {
     const name = input.name.trim()
     const goal = input.goal.trim()
     const nextAction = input.nextAction.trim()
@@ -133,38 +191,42 @@ export function createLocalPersonalOSData(
       throw new Error('请选择有效的截止日期')
     }
 
+    return {
+      name,
+      goal,
+      nextAction,
+      status: input.status,
+      ...(input.dueDate === undefined ? {} : { dueDate: input.dueDate }),
+    }
+  }
+
+  function updateProject(id: string, input: ProjectInput) {
+    if (!state.projects.some((project) => project.id === id)) {
+      throw new Error('项目不存在')
+    }
+
+    const validatedInput = validateProjectInput(input)
+
     commit({
       ...state,
-      projects: [
-        {
-          id: createId(),
-          name,
-          goal,
-          status: input.status,
-          nextAction,
-          dueDate: input.dueDate,
-        },
-        ...state.projects,
-      ],
+      projects: state.projects.map((project) =>
+        project.id === id ? { ...project, ...validatedInput } : project,
+      ),
     })
   }
 
-  function setProjectStatus(id: string, status: ProjectStatus) {
-    const exists = state.projects.some((project) => project.id === id)
-
-    if (!exists) {
+  function deleteProject(id: string) {
+    if (!state.projects.some((project) => project.id === id)) {
       throw new Error('项目不存在')
     }
 
     commit({
       ...state,
-      projects: state.projects.map((project) =>
-        project.id === id ? { ...project, status } : project,
-      ),
+      projects: state.projects.filter((project) => project.id !== id),
     })
   }
 
-  function addTask(input: TaskInput) {
+  function validateTaskInput(input: TaskInput) {
     const title = input.title.trim()
 
     if (!title) {
@@ -183,17 +245,58 @@ export function createLocalPersonalOSData(
       throw new Error('请选择有效的计划时间')
     }
 
+    return {
+      title,
+      date: input.date,
+      category: input.category,
+      time: input.time,
+    }
+  }
+
+  function addTask(input: TaskInput) {
+    const validatedInput = validateTaskInput(input)
+
     const task: Task = {
       id: createId(),
-      title,
-      meta: `${taskCategoryLabels[input.category]} · ${input.time ?? '全天'}`,
+      title: validatedInput.title,
+      meta: `${taskCategoryLabels[validatedInput.category]} · ${
+        validatedInput.time ?? '全天'
+      }`,
       done: false,
-      date: input.date,
-      time: input.time,
-      category: input.category,
+      date: validatedInput.date,
+      time: validatedInput.time,
+      category: validatedInput.category,
     }
 
     commit({ ...state, tasks: [...state.tasks, task] })
+  }
+
+  function updateTask(id: string, input: TaskUpdateInput) {
+    const exists = state.tasks.some((task) => task.id === id)
+
+    if (!exists) {
+      throw new Error('计划任务不存在')
+    }
+
+    const validatedInput = validateTaskInput(input)
+
+    commit({
+      ...state,
+      tasks: state.tasks.map((task) =>
+        task.id === id
+          ? {
+              ...task,
+              title: validatedInput.title,
+              meta: `${taskCategoryLabels[validatedInput.category]} · ${
+                validatedInput.time ?? '全天'
+              }`,
+              date: validatedInput.date,
+              time: validatedInput.time,
+              category: validatedInput.category,
+            }
+          : task,
+      ),
+    })
   }
 
   function recordTransaction(input: TransactionInput) {
@@ -308,6 +411,148 @@ export function createLocalPersonalOSData(
       ...state,
       paymentOrders,
       transactions: [transaction, ...state.transactions],
+    })
+  }
+
+  function validateTransactionInput(
+    input: TransactionUpdateInput,
+    currentId?: string,
+  ) {
+    if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
+      throw new Error('金额必须是大于 0 的整数金额')
+    }
+
+    const category = input.category.trim()
+    if (!category) {
+      throw new Error('请选择有效分类')
+    }
+
+    if (!isValidDateKey(input.date)) {
+      throw new Error('请选择有效的记账日期')
+    }
+
+    if (
+      input.kind !== 'expense' &&
+      input.kind !== 'income' &&
+      input.kind !== 'transfer'
+    ) {
+      throw new Error('请选择有效的收支类型')
+    }
+
+    if (input.stage !== undefined && !isPaymentStage(input.stage)) {
+      throw new Error('请选择有效的支付阶段')
+    }
+
+    if (input.source !== undefined && !isBillSource(input.source)) {
+      throw new Error('账单来源无效')
+    }
+
+    if (input.tag !== undefined && !isTransactionTag(input.tag)) {
+      throw new Error('记录标签无效')
+    }
+
+    if (
+      input.orderId !== undefined &&
+      !state.paymentOrders.some((order) => order.id === input.orderId)
+    ) {
+      throw new Error('关联订单不存在')
+    }
+
+    if (
+      input.relatedTransactionId !== undefined &&
+      !state.transactions.some(
+        (item) =>
+          item.id === input.relatedTransactionId &&
+          item.id !== currentId,
+      )
+    ) {
+      throw new Error('退款关联的原记录不存在')
+    }
+
+    if (
+      input.recurringId !== undefined &&
+      !state.recurringTransactions.some((item) => item.id === input.recurringId)
+    ) {
+      throw new Error('周期记录不存在')
+    }
+
+    const optionalText = (value: string | undefined) => {
+      const text = value?.trim()
+      return text ? text : undefined
+    }
+    const tag = input.tag === 'normal' ? undefined : input.tag
+
+    return {
+      kind: input.kind,
+      amountCents: input.amountCents,
+      category,
+      date: input.date,
+      ...(optionalText(input.note) ? { note: optionalText(input.note) } : {}),
+      ...(tag ? { tag } : {}),
+      ...(input.orderId ? { orderId: input.orderId } : {}),
+      ...(input.orderId && input.stage ? { stage: input.stage } : {}),
+      ...(input.recurringId ? { recurringId: input.recurringId } : {}),
+      ...(input.relatedTransactionId
+        ? { relatedTransactionId: input.relatedTransactionId }
+        : {}),
+      ...(optionalText(input.counterparty)
+        ? { counterparty: optionalText(input.counterparty) }
+        : {}),
+      ...(input.source ? { source: input.source } : {}),
+      ...(optionalText(input.sourceTradeNo)
+        ? { sourceTradeNo: optionalText(input.sourceTradeNo) }
+        : {}),
+      ...(optionalText(input.occurredAt)
+        ? { occurredAt: optionalText(input.occurredAt) }
+        : {}),
+    }
+  }
+
+  function updateTransaction(id: string, input: TransactionUpdateInput) {
+    const existing = state.transactions.find((item) => item.id === id)
+
+    if (!existing) {
+      throw new Error('记账记录不存在')
+    }
+
+    const validatedInput = validateTransactionInput(input, id)
+
+    commit({
+      ...state,
+      transactions: state.transactions.map((item) =>
+        item.id === id
+          ? {
+              ...validatedInput,
+              id,
+              ...(existing.importId ? { importId: existing.importId } : {}),
+            }
+          : item,
+      ),
+    })
+  }
+
+  function deleteTransaction(id: string) {
+    if (!state.transactions.some((item) => item.id === id)) {
+      throw new Error('记账记录不存在')
+    }
+
+    commit({
+      ...state,
+      transactions: state.transactions
+        .filter((item) => item.id !== id)
+        .map((item) =>
+          item.relatedTransactionId === id
+            ? { ...item, relatedTransactionId: undefined }
+            : item,
+        ),
+      billImports: state.billImports
+        .map((item) => ({
+          ...item,
+          transactionIds: item.transactionIds.filter(
+            (transactionId) => transactionId !== id,
+          ),
+        }))
+        .filter((item) => item.transactionIds.length > 0),
     })
   }
 
@@ -440,6 +685,75 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function deleteRecurringTransaction(id: string) {
+    if (!state.recurringTransactions.some((item) => item.id === id)) {
+      throw new Error('周期记录不存在')
+    }
+
+    commit({
+      ...state,
+      recurringTransactions: state.recurringTransactions.filter(
+        (item) => item.id !== id,
+      ),
+      transactions: state.transactions.map((item) =>
+        item.recurringId === id
+          ? { ...item, recurringId: undefined }
+          : item,
+      ),
+    })
+  }
+
+  function updatePaymentOrder(
+    id: string,
+    input: { name: string; expectedTotalCents: number },
+  ) {
+    const name = input.name.trim()
+
+    if (!name) {
+      throw new Error('订单名称不能为空')
+    }
+
+    if (
+      !Number.isInteger(input.expectedTotalCents) ||
+      input.expectedTotalCents <= 0
+    ) {
+      throw new Error('订单总额必须是大于 0 的整数金额')
+    }
+
+    if (!state.paymentOrders.some((order) => order.id === id)) {
+      throw new Error('订单不存在')
+    }
+
+    commit({
+      ...state,
+      paymentOrders: state.paymentOrders.map((order) =>
+        order.id === id
+          ? { ...order, name, expectedTotalCents: input.expectedTotalCents }
+          : order,
+      ),
+    })
+  }
+
+  function deletePaymentOrder(id: string) {
+    if (!state.paymentOrders.some((order) => order.id === id)) {
+      throw new Error('订单不存在')
+    }
+
+    commit({
+      ...state,
+      paymentOrders: state.paymentOrders.filter((order) => order.id !== id),
+      transactions: state.transactions.map((item) =>
+        item.orderId === id
+          ? {
+              ...item,
+              orderId: undefined,
+              stage: undefined,
+            }
+          : item,
+      ),
+    })
+  }
+
   function importBillTransactions(input: BillImportInput): BillImportResult {
     if (!isExternalBillSource(input.source)) {
       throw new Error('账单来源无效')
@@ -549,10 +863,160 @@ export function createLocalPersonalOSData(
   }
 
   function recordStudyLog(input: StudyLogInput) {
-    const studyLog: StudyLog = { ...input, id: createId() }
+    const topic = input.topic.trim()
+    if (!topic) {
+      throw new Error('学习主题不能为空')
+    }
+
+    if (
+      !Number.isInteger(input.minutes) ||
+      input.minutes <= 0
+    ) {
+      throw new Error('学习时长必须大于 0 分钟')
+    }
+
+    if (!isValidDateKey(input.date)) {
+      throw new Error('请选择有效的学习日期')
+    }
+
+    if (
+      input.pathId !== undefined &&
+      !state.learningPaths.some((path) => path.id === input.pathId)
+    ) {
+      throw new Error('学习路径不存在')
+    }
+
+    if (
+      input.platform !== undefined &&
+      !isLearningPlatform(input.platform)
+    ) {
+      throw new Error('学习来源无效')
+    }
+
+    if (
+      input.resourceId !== undefined &&
+      !state.learningResources.some((resource) => resource.id === input.resourceId)
+    ) {
+      throw new Error('学习课程不存在')
+    }
+
+    const lesson = input.lessonId === undefined
+      ? undefined
+      : state.learningLessons.find((item) => item.id === input.lessonId)
+
+    if (input.lessonId !== undefined && !lesson) {
+      throw new Error('学习课时不存在')
+    }
+
+    if (lesson && lesson.resourceId !== input.resourceId) {
+      throw new Error('学习课时与课程不匹配')
+    }
+
+    const note = input.note?.trim()
+    const studyLog: StudyLog = {
+      id: createId(),
+      topic,
+      minutes: input.minutes,
+      date: input.date,
+      ...(input.pathId ? { pathId: input.pathId } : {}),
+      ...(input.platform ? { platform: input.platform } : {}),
+      ...(input.resourceId ? { resourceId: input.resourceId } : {}),
+      ...(lesson ? { lessonId: lesson.id } : {}),
+      ...(note ? { note } : {}),
+    }
+
     commit({
       ...state,
       studyLogs: [studyLog, ...state.studyLogs],
+    })
+  }
+
+  function validateStudyLogInput(input: StudyLogInput) {
+    const topic = input.topic.trim()
+
+    if (!topic) {
+      throw new Error('学习主题不能为空')
+    }
+
+    if (!Number.isInteger(input.minutes) || input.minutes <= 0) {
+      throw new Error('学习时长必须大于 0 分钟')
+    }
+
+    if (!isValidDateKey(input.date)) {
+      throw new Error('请选择有效的学习日期')
+    }
+
+    if (
+      input.pathId !== undefined &&
+      !state.learningPaths.some((path) => path.id === input.pathId)
+    ) {
+      throw new Error('学习路径不存在')
+    }
+
+    if (
+      input.platform !== undefined &&
+      !isLearningPlatform(input.platform)
+    ) {
+      throw new Error('学习来源无效')
+    }
+
+    if (
+      input.resourceId !== undefined &&
+      !state.learningResources.some((resource) => resource.id === input.resourceId)
+    ) {
+      throw new Error('学习课程不存在')
+    }
+
+    const lesson =
+      input.lessonId === undefined
+        ? undefined
+        : state.learningLessons.find((item) => item.id === input.lessonId)
+
+    if (input.lessonId !== undefined && !lesson) {
+      throw new Error('学习课时不存在')
+    }
+
+    if (lesson && lesson.resourceId !== input.resourceId) {
+      throw new Error('学习课时与课程不匹配')
+    }
+
+    const note = input.note?.trim()
+
+    return {
+      topic,
+      minutes: input.minutes,
+      date: input.date,
+      ...(input.pathId ? { pathId: input.pathId } : {}),
+      ...(input.platform ? { platform: input.platform } : {}),
+      ...(input.resourceId ? { resourceId: input.resourceId } : {}),
+      ...(lesson ? { lessonId: lesson.id } : {}),
+      ...(note ? { note } : {}),
+    }
+  }
+
+  function updateStudyLog(id: string, input: StudyLogUpdateInput) {
+    if (!state.studyLogs.some((item) => item.id === id)) {
+      throw new Error('学习记录不存在')
+    }
+
+    const validatedInput = validateStudyLogInput(input)
+
+    commit({
+      ...state,
+      studyLogs: state.studyLogs.map((item) =>
+        item.id === id ? { ...item, ...validatedInput } : item,
+      ),
+    })
+  }
+
+  function deleteStudyLog(id: string) {
+    if (!state.studyLogs.some((item) => item.id === id)) {
+      throw new Error('学习记录不存在')
+    }
+
+    commit({
+      ...state,
+      studyLogs: state.studyLogs.filter((item) => item.id !== id),
     })
   }
 
@@ -587,19 +1051,166 @@ export function createLocalPersonalOSData(
     })
   }
 
-  function addLearningResource(input: LearningResourceInput) {
+  function validateLearningPathInput(input: LearningPathInput) {
+    const title = input.title.trim()
+
+    if (!title) {
+      throw new Error('学习路径名称不能为空')
+    }
+
+    if (!Number.isInteger(input.targetMinutes) || input.targetMinutes <= 0) {
+      throw new Error('学习目标必须大于 0 分钟')
+    }
+
+    return { title, targetMinutes: input.targetMinutes }
+  }
+
+  function updateLearningPath(id: string, input: LearningPathInput) {
+    if (!state.learningPaths.some((path) => path.id === id)) {
+      throw new Error('学习路径不存在')
+    }
+
+    const validatedInput = validateLearningPathInput(input)
+
+    commit({
+      ...state,
+      learningPaths: state.learningPaths.map((path) =>
+        path.id === id ? { ...path, ...validatedInput } : path,
+      ),
+    })
+  }
+
+  function deleteLearningPath(id: string) {
+    if (!state.learningPaths.some((path) => path.id === id)) {
+      throw new Error('学习路径不存在')
+    }
+
+    commit({
+      ...state,
+      learningPaths: state.learningPaths.filter((path) => path.id !== id),
+      learningResources: state.learningResources.map((resource) =>
+        resource.pathId === id ? { ...resource, pathId: null } : resource,
+      ),
+      studyLogs: state.studyLogs.map((item) =>
+        item.pathId === id ? { ...item, pathId: undefined } : item,
+      ),
+    })
+  }
+
+  function validateLearningResourceInput(input: LearningResourceInput) {
     const title = input.title.trim()
 
     if (!title) {
       throw new Error('资料名称不能为空')
     }
 
+    if (
+      input.pathId !== null &&
+      !state.learningPaths.some((path) => path.id === input.pathId)
+    ) {
+      throw new Error('学习路径不存在')
+    }
+
+    if (input.sourceUrl !== undefined && !isHttpUrl(input.sourceUrl.trim())) {
+      throw new Error('请输入有效的课程链接')
+    }
+
+    if (
+      input.platform !== undefined &&
+      !isLearningPlatform(input.platform)
+    ) {
+      throw new Error('学习来源无效')
+    }
+
+    if (
+      input.targetMinutes !== undefined &&
+      (!Number.isInteger(input.targetMinutes) || input.targetMinutes <= 0)
+    ) {
+      throw new Error('课程目标必须大于 0 分钟')
+    }
+
+    const sourceUrl = input.sourceUrl?.trim()
+    const parsedSource = sourceUrl ? parseLearningSource(sourceUrl) : undefined
+    const externalId = input.externalId?.trim() || parsedSource?.externalId
+
+    return {
+      pathId: input.pathId,
+      title,
+      kind: input.kind,
+      status: input.status,
+      ...(input.platform ? { platform: input.platform } : parsedSource?.platform ? { platform: parsedSource.platform } : {}),
+      ...(sourceUrl ? { sourceUrl } : {}),
+      ...(externalId ? { externalId } : {}),
+      ...(input.targetMinutes ? { targetMinutes: input.targetMinutes } : {}),
+    }
+  }
+
+  function addLearningResource(input: LearningResourceInput) {
+    const validatedInput = validateLearningResourceInput(input)
+
     commit({
       ...state,
       learningResources: [
-        { id: createId(), ...input, title },
+        {
+          id: createId(),
+          ...validatedInput,
+        },
         ...state.learningResources,
       ],
+    })
+  }
+
+  function updateLearningResource(id: string, input: LearningResourceInput) {
+    if (!state.learningResources.some((resource) => resource.id === id)) {
+      throw new Error('学习资料不存在')
+    }
+
+    const validatedInput = validateLearningResourceInput(input)
+
+    commit({
+      ...state,
+      learningResources: state.learningResources.map((resource) =>
+        resource.id === id ? { ...resource, ...validatedInput } : resource,
+      ),
+    })
+  }
+
+  function deleteLearningResource(id: string) {
+    if (!state.learningResources.some((resource) => resource.id === id)) {
+      throw new Error('学习资料不存在')
+    }
+
+    const removedLessonIds = new Set(
+      state.learningLessons
+        .filter((lesson) => lesson.resourceId === id)
+        .map((lesson) => lesson.id),
+    )
+
+    commit({
+      ...state,
+      learningResources: state.learningResources.filter(
+        (resource) => resource.id !== id,
+      ),
+      learningLessons: state.learningLessons.filter(
+        (lesson) => lesson.resourceId !== id,
+      ),
+      studyLogs: state.studyLogs.map((item) =>
+        item.resourceId === id
+          ? { ...item, resourceId: undefined, lessonId: undefined }
+          : item,
+      ),
+      learningNotes: state.learningNotes.map((note) =>
+        note.resourceId === id
+          ? {
+              ...note,
+              resourceId: null,
+              lessonId:
+                note.lessonId && removedLessonIds.has(note.lessonId)
+                  ? null
+                  : note.lessonId,
+            }
+          : note,
+      ),
     })
   }
 
@@ -615,6 +1226,308 @@ export function createLocalPersonalOSData(
       learningResources: state.learningResources.map((resource) =>
         resource.id === id ? { ...resource, status } : resource,
       ),
+    })
+  }
+
+  function addLearningLessons(
+    resourceId: string,
+    drafts: Array<LearningLessonDraft>,
+  ) {
+    const resource = state.learningResources.find(
+      (item) => item.id === resourceId,
+    )
+
+    if (!resource) {
+      throw new Error('学习课程不存在')
+    }
+
+    if (drafts.length === 0) {
+      throw new Error('请输入至少一个课时')
+    }
+
+    const existingCount = state.learningLessons.filter(
+      (item) => item.resourceId === resourceId,
+    ).length
+    const lessons = drafts.map((draft, index) => {
+      const title = draft.title.trim()
+      if (!title) {
+        throw new Error('课时名称不能为空')
+      }
+
+      if (
+        draft.expectedMinutes !== undefined &&
+        (!Number.isInteger(draft.expectedMinutes) || draft.expectedMinutes <= 0)
+      ) {
+        throw new Error('课时预计时长必须大于 0 分钟')
+      }
+
+      if (
+        draft.status !== undefined &&
+        !isLearningLessonStatus(draft.status)
+      ) {
+        throw new Error('课时状态无效')
+      }
+
+      if (
+        draft.sourceUrl !== undefined &&
+        !isHttpUrl(draft.sourceUrl.trim())
+      ) {
+        throw new Error('请输入有效的课时链接')
+      }
+
+      return {
+        id: createId(),
+        resourceId,
+        title,
+        sortOrder: existingCount + index + 1,
+        status: draft.status ?? 'todo',
+        ...(draft.expectedMinutes
+          ? { expectedMinutes: draft.expectedMinutes }
+          : {}),
+        ...(draft.sourceUrl?.trim()
+          ? { sourceUrl: draft.sourceUrl.trim() }
+          : {}),
+      }
+    })
+
+    commit({
+      ...state,
+      learningLessons: [...state.learningLessons, ...lessons],
+    })
+  }
+
+  function setLearningLessonStatus(id: string, status: LearningLessonStatus) {
+    const exists = state.learningLessons.some((lesson) => lesson.id === id)
+
+    if (!exists) {
+      throw new Error('学习课时不存在')
+    }
+
+    if (!isLearningLessonStatus(status)) {
+      throw new Error('课时状态无效')
+    }
+
+    commit({
+      ...state,
+      learningLessons: state.learningLessons.map((lesson) =>
+        lesson.id === id ? { ...lesson, status } : lesson,
+      ),
+    })
+  }
+
+  function updateLearningLesson(
+    id: string,
+    input: LearningLessonUpdateInput,
+  ) {
+    const existing = state.learningLessons.find((lesson) => lesson.id === id)
+
+    if (!existing) {
+      throw new Error('学习课时不存在')
+    }
+
+    const title = input.title.trim()
+    if (!title) {
+      throw new Error('课时名称不能为空')
+    }
+
+    if (
+      input.expectedMinutes !== undefined &&
+      (!Number.isInteger(input.expectedMinutes) || input.expectedMinutes <= 0)
+    ) {
+      throw new Error('课时预计时长必须大于 0 分钟')
+    }
+
+    if (!isLearningLessonStatus(input.status)) {
+      throw new Error('课时状态无效')
+    }
+
+    if (
+      input.sourceUrl !== undefined &&
+      !isHttpUrl(input.sourceUrl.trim())
+    ) {
+      throw new Error('请输入有效的课时链接')
+    }
+
+    const sourceUrl = input.sourceUrl?.trim()
+
+    commit({
+      ...state,
+      learningLessons: state.learningLessons.map((lesson) =>
+        lesson.id === id
+          ? {
+              ...lesson,
+              title,
+              status: input.status,
+              ...(input.expectedMinutes
+                ? { expectedMinutes: input.expectedMinutes }
+                : {}),
+              ...(sourceUrl ? { sourceUrl } : {}),
+            }
+          : lesson,
+      ),
+    })
+  }
+
+  function deleteLearningLesson(id: string) {
+    if (!state.learningLessons.some((lesson) => lesson.id === id)) {
+      throw new Error('学习课时不存在')
+    }
+
+    commit({
+      ...state,
+      learningLessons: state.learningLessons.filter(
+        (lesson) => lesson.id !== id,
+      ),
+      studyLogs: state.studyLogs.map((item) =>
+        item.lessonId === id ? { ...item, lessonId: undefined } : item,
+      ),
+      learningNotes: state.learningNotes.map((note) =>
+        note.lessonId === id ? { ...note, lessonId: null } : note,
+      ),
+    })
+  }
+
+  function addLearningNoteFolder(name: string) {
+    const folderName = name.trim()
+
+    if (!folderName) {
+      throw new Error('笔记文件夹名称不能为空')
+    }
+
+    const folder: LearningNoteFolder = {
+      id: createId(),
+      name: folderName,
+      createdAt: toDateKey(now()),
+    }
+
+    commit({
+      ...state,
+      learningNoteFolders: [folder, ...state.learningNoteFolders],
+    })
+  }
+
+  function updateLearningNoteFolder(id: string, name: string) {
+    const folderName = name.trim()
+
+    if (!folderName) {
+      throw new Error('笔记文件夹名称不能为空')
+    }
+
+    if (!state.learningNoteFolders.some((folder) => folder.id === id)) {
+      throw new Error('笔记文件夹不存在')
+    }
+
+    commit({
+      ...state,
+      learningNoteFolders: state.learningNoteFolders.map((folder) =>
+        folder.id === id ? { ...folder, name: folderName } : folder,
+      ),
+    })
+  }
+
+  function deleteLearningNoteFolder(id: string) {
+    if (!state.learningNoteFolders.some((folder) => folder.id === id)) {
+      throw new Error('笔记文件夹不存在')
+    }
+
+    commit({
+      ...state,
+      learningNoteFolders: state.learningNoteFolders.filter(
+        (folder) => folder.id !== id,
+      ),
+      learningNotes: state.learningNotes.map((note) =>
+        note.folderId === id ? { ...note, folderId: null } : note,
+      ),
+    })
+  }
+
+  function saveLearningNote(input: LearningNoteInput) {
+    const title = input.title.trim()
+
+    if (!title) {
+      throw new Error('笔记标题不能为空')
+    }
+
+    const content = input.content.trim()
+
+    if (!content) {
+      throw new Error('笔记内容不能为空')
+    }
+
+    if (
+      input.folderId !== null &&
+      input.folderId !== undefined &&
+      !state.learningNoteFolders.some((folder) => folder.id === input.folderId)
+    ) {
+      throw new Error('笔记文件夹不存在')
+    }
+
+    if (
+      input.resourceId !== null &&
+      input.resourceId !== undefined &&
+      !state.learningResources.some(
+        (resource) => resource.id === input.resourceId,
+      )
+    ) {
+      throw new Error('学习课程不存在')
+    }
+
+    const lesson = input.lessonId === undefined || input.lessonId === null
+      ? undefined
+      : state.learningLessons.find((item) => item.id === input.lessonId)
+
+    if (input.lessonId && !lesson) {
+      throw new Error('学习课时不存在')
+    }
+
+    if (lesson && lesson.resourceId !== input.resourceId) {
+      throw new Error('学习课时与课程不匹配')
+    }
+
+    const tags = [...new Set(input.tags.map((tag) => tag.trim()).filter(Boolean))]
+    const updatedAt = now().toISOString()
+
+    if (input.id) {
+      const exists = state.learningNotes.some((note) => note.id === input.id)
+
+      if (!exists) {
+        throw new Error('学习笔记不存在')
+      }
+
+      commit({
+        ...state,
+        learningNotes: state.learningNotes.map((note) =>
+          note.id === input.id
+            ? {
+                ...note,
+                folderId: input.folderId ?? null,
+                title,
+                content,
+                tags,
+                resourceId: input.resourceId ?? null,
+                lessonId: lesson?.id ?? null,
+                updatedAt,
+              }
+            : note,
+        ),
+      })
+      return
+    }
+
+    const note: LearningNote = {
+      id: createId(),
+      folderId: input.folderId ?? null,
+      title,
+      content,
+      tags,
+      resourceId: input.resourceId ?? null,
+      lessonId: lesson?.id ?? null,
+      updatedAt,
+    }
+
+    commit({
+      ...state,
+      learningNotes: [note, ...state.learningNotes],
     })
   }
 
@@ -638,6 +1551,65 @@ export function createLocalPersonalOSData(
               index === existingIndex ? review : item,
             )
           : [review, ...state.weeklyReviews],
+    })
+  }
+
+  function deleteLearningNote(id: string) {
+    if (!state.learningNotes.some((note) => note.id === id)) {
+      throw new Error('学习笔记不存在')
+    }
+
+    commit({
+      ...state,
+      learningNotes: state.learningNotes.filter((note) => note.id !== id),
+    })
+  }
+
+  function updateWeeklyReview(id: string, input: WeeklyReviewUpdateInput) {
+    const weekStartDate = input.weekStartDate.trim()
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStartDate)) {
+      throw new Error('请选择有效的周复盘日期')
+    }
+
+    if (
+      state.weeklyReviews.some(
+        (item) =>
+          item.weekStartDate === weekStartDate &&
+          item.id !== id,
+      )
+    ) {
+      throw new Error('该周复盘已存在')
+    }
+
+    if (!state.weeklyReviews.some((item) => item.id === id)) {
+      throw new Error('周复盘不存在')
+    }
+
+    commit({
+      ...state,
+      weeklyReviews: state.weeklyReviews.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              weekStartDate,
+              wins: input.wins.trim(),
+              blockers: input.blockers.trim(),
+              nextFocus: input.nextFocus.trim(),
+            }
+          : item,
+      ),
+    })
+  }
+
+  function deleteWeeklyReview(id: string) {
+    if (!state.weeklyReviews.some((item) => item.id === id)) {
+      throw new Error('周复盘不存在')
+    }
+
+    commit({
+      ...state,
+      weeklyReviews: state.weeklyReviews.filter((item) => item.id !== id),
     })
   }
 
@@ -753,6 +1725,17 @@ export function createLocalPersonalOSData(
     })
   }
 
+  function deleteWorkout(id: string) {
+    if (!state.workouts.some((workout) => workout.id === id)) {
+      throw new Error('训练记录不存在')
+    }
+
+    commit({
+      ...state,
+      workouts: state.workouts.filter((workout) => workout.id !== id),
+    })
+  }
+
   function setWorkoutStatus(id: string, status: WorkoutStatus) {
     const exists = state.workouts.some((workout) => workout.id === id)
 
@@ -769,6 +1752,23 @@ export function createLocalPersonalOSData(
   }
 
   function saveHealthMetric(input: HealthMetricInput) {
+    const metric = buildHealthMetric(createId(), input)
+    const existingIndex = state.healthMetrics.findIndex(
+      (item) => item.date === metric.date,
+    )
+
+    commit({
+      ...state,
+      healthMetrics:
+        existingIndex >= 0
+          ? state.healthMetrics.map((item, index) =>
+              index === existingIndex ? metric : item,
+            )
+          : [metric, ...state.healthMetrics],
+    })
+  }
+
+  function buildHealthMetric(id: string, input: HealthMetricInput): HealthMetric {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
       throw new Error('请选择有效的记录日期')
     }
@@ -806,8 +1806,8 @@ export function createLocalPersonalOSData(
       throw new Error('请选择有效的月经症状')
     }
 
-    const metric: HealthMetric = {
-      id: createId(),
+    return {
+      id,
       date: input.date,
       sleepHours: Math.round(input.sleepHours * 10) / 10,
       weightKg:
@@ -823,18 +1823,38 @@ export function createLocalPersonalOSData(
         ? { menstruationNote: input.menstruationNote.trim() }
         : {}),
     }
-    const existingIndex = state.healthMetrics.findIndex(
-      (item) => item.date === metric.date,
+  }
+
+  function updateHealthMetric(id: string, input: HealthMetricUpdateInput) {
+    if (!state.healthMetrics.some((metric) => metric.id === id)) {
+      throw new Error('身体指标记录不存在')
+    }
+
+    const metric = buildHealthMetric(id, input)
+    const duplicate = state.healthMetrics.some(
+      (item) => item.date === metric.date && item.id !== id,
     )
+
+    if (duplicate) {
+      throw new Error('该日期的身体指标记录已存在')
+    }
 
     commit({
       ...state,
-      healthMetrics:
-        existingIndex >= 0
-          ? state.healthMetrics.map((item, index) =>
-              index === existingIndex ? metric : item,
-            )
-          : [metric, ...state.healthMetrics],
+      healthMetrics: state.healthMetrics.map((item) =>
+        item.id === id ? { ...metric, id } : item,
+      ),
+    })
+  }
+
+  function deleteHealthMetric(id: string) {
+    if (!state.healthMetrics.some((metric) => metric.id === id)) {
+      throw new Error('身体指标记录不存在')
+    }
+
+    commit({
+      ...state,
+      healthMetrics: state.healthMetrics.filter((metric) => metric.id !== id),
     })
   }
 
@@ -886,31 +1906,112 @@ export function createLocalPersonalOSData(
     commit({ ...state, settings: nextSettings })
   }
 
+  function renameCategory(kind: SettingsCategoryKind, from: string, to: string) {
+    const nextName = to.trim()
+    const currentName = from.trim()
+
+    if (!nextName) {
+      throw new Error('分类名称不能为空')
+    }
+
+    const label = kind === 'expense' ? '支出分类' : '收入分类'
+    const categories = kind === 'expense'
+      ? state.settings.expenseCategories
+      : state.settings.incomeCategories
+
+    if (!categories.includes(currentName)) {
+      throw new Error(`${label}不存在`)
+    }
+
+    if (nextName !== currentName && categories.includes(nextName)) {
+      throw new Error(`${label}已存在`)
+    }
+
+    const nextCategories = [
+      ...new Set(
+        categories.map((category) =>
+          category === currentName ? nextName : category,
+        ),
+      ),
+    ]
+
+    const renamedRecordCategory = <
+      T extends { kind: Transaction['kind']; category: string },
+    >(
+      record: T,
+    ): T =>
+      record.kind === kind && record.category === currentName
+        ? { ...record, category: nextName }
+        : record
+
+    commit({
+      ...state,
+      transactions: state.transactions.map(renamedRecordCategory),
+      recurringTransactions: state.recurringTransactions.map(
+        renamedRecordCategory,
+      ),
+      settings:
+        kind === 'expense'
+          ? { ...state.settings, expenseCategories: nextCategories }
+          : { ...state.settings, incomeCategories: nextCategories },
+    })
+  }
+
   return {
     subscribe,
     getSnapshot,
     toggleTask,
     addTask,
+    updateTask,
+    deleteTask,
     addQuickTask,
     addProject,
+    updateProject,
+    deleteProject,
     setProjectStatus,
     recordTransaction,
+    updateTransaction,
+    deleteTransaction,
     saveRecurringTransaction,
     setRecurringTransactionStatus,
     recordRecurringTransaction,
+    deleteRecurringTransaction,
+    updatePaymentOrder,
+    deletePaymentOrder,
     importBillTransactions,
     undoBillImport,
     recordStudyLog,
+    updateStudyLog,
+    deleteStudyLog,
     updateMonthlyBudget,
     addLearningPath,
+    updateLearningPath,
+    deleteLearningPath,
     addLearningResource,
+    updateLearningResource,
+    deleteLearningResource,
     setLearningResourceStatus,
+    addLearningLessons,
+    setLearningLessonStatus,
+    updateLearningLesson,
+    deleteLearningLesson,
+    addLearningNoteFolder,
+    updateLearningNoteFolder,
+    deleteLearningNoteFolder,
+    saveLearningNote,
+    deleteLearningNote,
     saveWeeklyReview,
+    updateWeeklyReview,
+    deleteWeeklyReview,
     recordWorkout,
     updateWorkout,
+    deleteWorkout,
     setWorkoutStatus,
     saveHealthMetric,
+    updateHealthMetric,
+    deleteHealthMetric,
     updateSettings,
+    renameCategory,
   }
 }
 
@@ -990,6 +2091,9 @@ function createSeedState(now: Date): PersonalOSState {
         status: 'doing',
       },
     ],
+    learningLessons: [],
+    learningNoteFolders: [],
+    learningNotes: [],
     weeklyReviews: [],
     workouts: [],
     healthMetrics: [],
@@ -1044,6 +2148,15 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
       : [],
     learningResources: Array.isArray(value.learningResources)
       ? value.learningResources.filter(isLearningResource)
+      : [],
+    learningLessons: Array.isArray(value.learningLessons)
+      ? value.learningLessons.filter(isLearningLesson)
+      : [],
+    learningNoteFolders: Array.isArray(value.learningNoteFolders)
+      ? value.learningNoteFolders.filter(isLearningNoteFolder)
+      : [],
+    learningNotes: Array.isArray(value.learningNotes)
+      ? value.learningNotes.filter(isLearningNote)
       : [],
     weeklyReviews: Array.isArray(value.weeklyReviews)
       ? value.weeklyReviews.filter(isWeeklyReview)
@@ -1343,7 +2456,12 @@ function isStudyLog(value: unknown): value is StudyLog {
     value.minutes > 0 &&
     typeof value.date === 'string' &&
     /^\d{4}-\d{2}-\d{2}$/.test(value.date) &&
-    (value.pathId === undefined || typeof value.pathId === 'string')
+    (value.pathId === undefined || typeof value.pathId === 'string') &&
+    (value.platform === undefined || isLearningPlatform(value.platform)) &&
+    (value.resourceId === undefined || typeof value.resourceId === 'string') &&
+    (value.lessonId === undefined || typeof value.lessonId === 'string') &&
+    (value.note === undefined ||
+      (typeof value.note === 'string' && value.note.trim().length > 0))
   )
 }
 
@@ -1373,8 +2491,17 @@ function isLearningResource(value: unknown): value is LearningResource {
     typeof value.title === 'string' &&
     value.title.trim().length > 0 &&
     isLearningResourceKind(value.kind) &&
-    isLearningResourceStatus(value.status)
-  )
+    isLearningResourceStatus(value.status) &&
+    (value.platform === undefined || isLearningPlatform(value.platform)) &&
+    (value.sourceUrl === undefined ||
+      (typeof value.sourceUrl === 'string' && value.sourceUrl.trim().length > 0)) &&
+    (value.externalId === undefined ||
+      (typeof value.externalId === 'string' && value.externalId.trim().length > 0)) &&
+    (value.targetMinutes === undefined ||
+      (typeof value.targetMinutes === 'number' &&
+        Number.isInteger(value.targetMinutes) &&
+        value.targetMinutes > 0))
+)
 }
 
 function isLearningResourceKind(value: unknown): value is LearningResource['kind'] {
@@ -1383,6 +2510,70 @@ function isLearningResourceKind(value: unknown): value is LearningResource['kind
 
 function isLearningResourceStatus(value: unknown): value is LearningResource['status'] {
   return value === 'todo' || value === 'doing' || value === 'done'
+}
+
+function isLearningLesson(value: unknown): value is LearningLesson {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.resourceId === 'string' &&
+    typeof value.title === 'string' &&
+    value.title.trim().length > 0 &&
+    typeof value.sortOrder === 'number' &&
+    Number.isInteger(value.sortOrder) &&
+    value.sortOrder > 0 &&
+    isLearningResourceStatus(value.status) &&
+    (value.expectedMinutes === undefined ||
+      (typeof value.expectedMinutes === 'number' &&
+        Number.isInteger(value.expectedMinutes) &&
+        value.expectedMinutes > 0)) &&
+    (value.sourceUrl === undefined ||
+      (typeof value.sourceUrl === 'string' && value.sourceUrl.trim().length > 0))
+  )
+}
+
+function isLearningLessonStatus(
+  value: unknown,
+): value is LearningLessonStatus {
+  return value === 'todo' || value === 'doing' || value === 'done'
+}
+
+function isLearningNoteFolder(value: unknown): value is LearningNoteFolder {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    value.name.trim().length > 0 &&
+    typeof value.createdAt === 'string' &&
+    isValidDateKey(value.createdAt)
+  )
+}
+
+function isLearningNote(value: unknown): value is LearningNote {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    (value.folderId === null || typeof value.folderId === 'string') &&
+    typeof value.title === 'string' &&
+    value.title.trim().length > 0 &&
+    typeof value.content === 'string' &&
+    value.content.trim().length > 0 &&
+    Array.isArray(value.tags) &&
+    value.tags.every((tag) => typeof tag === 'string') &&
+    (value.resourceId === null || typeof value.resourceId === 'string') &&
+    (value.lessonId === null || typeof value.lessonId === 'string') &&
+    typeof value.updatedAt === 'string' &&
+    value.updatedAt.length > 0
+  )
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 function isWeeklyReview(value: unknown): value is WeeklyReview {

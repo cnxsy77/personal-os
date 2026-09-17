@@ -61,6 +61,14 @@ describe('Personal OS dashboard', () => {
     await user.click(screen.getByRole('button', { name: '添加' }))
     expect(data.getSnapshot().settings.expenseCategories).toContain('咖啡')
 
+    await user.click(screen.getByRole('button', { name: '重命名餐饮' }))
+    await user.clear(screen.getByLabelText('修改分类名称'))
+    await user.type(screen.getByLabelText('修改分类名称'), '日常开销')
+    await user.click(screen.getByRole('button', { name: '保存' }))
+    expect(data.getSnapshot().settings.expenseCategories).toContain('日常开销')
+    expect(data.getSnapshot().settings.expenseCategories).not.toContain('餐饮')
+    expect(data.getSnapshot().transactions[0]?.category).toBe('日常开销')
+
     await user.click(screen.getByRole('button', { name: '大' }))
     expect(data.getSnapshot().settings.fontScale).toBe('large')
     expect(document.documentElement.dataset.fontScale).toBe('large')
@@ -73,6 +81,7 @@ describe('Personal OS dashboard', () => {
       storage.getItem('personal-os:v1') as string,
     ).settings
     expect(savedSettings.expenseCategories).toContain('咖啡')
+    expect(savedSettings.expenseCategories).toContain('日常开销')
 
     await user.click(screen.getByRole('button', { name: '关闭设置' }))
     await user.click(screen.getByRole('button', { name: '快速记录' }))

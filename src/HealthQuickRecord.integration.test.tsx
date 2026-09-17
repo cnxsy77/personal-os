@@ -13,9 +13,6 @@ describe('health quick capture', () => {
 
     await user.click(screen.getByRole('button', { name: '锻炼' }))
     await user.click(screen.getByRole('button', { name: '添加记录' }))
-    fireEvent.change(screen.getByLabelText('训练日期'), {
-      target: { value: '2026-09-11' },
-    })
     await user.click(screen.getByRole('button', { name: '训练类型' }))
     await user.click(screen.getByLabelText('胸'))
     await user.click(screen.getByLabelText('肩'))
@@ -56,7 +53,9 @@ describe('health quick capture', () => {
     expect(screen.queryByLabelText('收尾')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('酸痛肌群')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('训练备注')).not.toBeInTheDocument()
-    expect(screen.getByText('1 / 4')).toBeInTheDocument()
+    expect(screen.getByText('本周完成').nextElementSibling).toHaveTextContent(
+      '1 / 4',
+    )
   })
 
   it('edits an existing workout and preserves its record id', async () => {
@@ -177,6 +176,49 @@ describe('health quick capture', () => {
     expect(screen.getByRole('list', { name: '身体指标' })).toHaveTextContent(
       '月经 中等 · 痛经、疲劳',
     )
+  })
+
+  it('edits and deletes a health metric after confirmation', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
+    await user.click(screen.getByRole('tab', { name: '身体指标' }))
+    await user.type(screen.getByLabelText('睡眠时长'), '7.2')
+    await user.click(screen.getByRole('button', { name: '保存身体指标' }))
+
+    const originalId = data.getSnapshot().healthMetrics[0]?.id as string
+    await user.click(screen.getByRole('button', { name: '编辑2026.09.17身体指标' }))
+
+    expect(screen.getByRole('dialog', { name: '编辑身体指标' })).toBeInTheDocument()
+    expect(screen.getByLabelText('记录日期')).toHaveValue('2026-09-17')
+    expect(screen.getByLabelText('睡眠时长')).toHaveValue(7.2)
+
+    await user.clear(screen.getByLabelText('睡眠时长'))
+    await user.type(screen.getByLabelText('睡眠时长'), '8.4')
+    await user.click(screen.getByRole('button', { name: '保存身体指标' }))
+
+    expect(screen.getByText('身体指标已更新')).toBeInTheDocument()
+    expect(data.getSnapshot().healthMetrics).toHaveLength(1)
+    expect(data.getSnapshot().healthMetrics[0]).toMatchObject({
+      id: originalId,
+      sleepHours: 8.4,
+    })
+
+    await user.click(screen.getByRole('button', { name: '删除2026.09.17身体指标' }))
+    expect(screen.getByRole('alertdialog', { name: '删除身体指标' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(data.getSnapshot().healthMetrics).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: '删除2026.09.17身体指标' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+
+    expect(screen.getByText('身体指标已删除')).toBeInTheDocument()
+    expect(data.getSnapshot().healthMetrics).toHaveLength(0)
+    expect(screen.getByRole('list', { name: '身体指标' })).toBeEmptyDOMElement()
   })
 
   it('keeps the workout dialog open when duration is invalid', async () => {
@@ -372,5 +414,35 @@ describe('health quick capture', () => {
         { name: '史密斯上斜推胸', prescription: '12×4' },
       ],
     })
+  })
+
+  it('deletes a workout only after confirmation', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    data.recordWorkout({
+      date: '2026-09-17',
+      kind: 'chest',
+      kinds: ['chest'],
+      status: 'completed',
+      durationMinutes: 45,
+      notes: '',
+      focus: '胸加肩',
+    })
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '锻炼' }))
+    await user.click(screen.getByRole('button', { name: '删除胸加肩' }))
+
+    expect(screen.getByRole('alertdialog', { name: '删除训练' })).toBeInTheDocument()
+    expect(data.getSnapshot().workouts).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(data.getSnapshot().workouts).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: '删除胸加肩' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+
+    expect(screen.getByText('训练已删除')).toBeInTheDocument()
+    expect(data.getSnapshot().workouts).toHaveLength(0)
   })
 })

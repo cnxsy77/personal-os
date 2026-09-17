@@ -4,20 +4,25 @@ import {
   ArrowUpCircle,
   Ban,
   Check,
+  Pencil,
   Plus,
   RefreshCw,
   Repeat,
+  Trash2,
   Wallet,
 } from 'lucide-react'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { RecordDialog } from '../components/RecordDialog'
 import type {
   BillImportInput,
   BillImportResult,
   PersonalOSState,
+  PaymentOrder,
   RecurringTransactionInput,
   Transaction,
   TransactionInput,
   TransactionKind,
+  TransactionUpdateInput,
 } from '../data/model'
 import {
   calculateOrderProgress,
@@ -51,6 +56,14 @@ type Props = {
   onRecurringSubmit: (input: RecurringTransactionInput) => void
   onRecurringStatusChange: (id: string, active: boolean) => void
   onRecurringRecord: (id: string) => void
+  onTransactionUpdate: (id: string, input: TransactionUpdateInput) => void
+  onTransactionDelete: (id: string) => void
+  onRecurringDelete: (id: string) => void
+  onPaymentOrderUpdate: (
+    id: string,
+    input: { name: string; expectedTotalCents: number },
+  ) => void
+  onPaymentOrderDelete: (id: string) => void
   onImportSubmit: (input: BillImportInput) => BillImportResult
   onImportUndo: (importId: string) => void
   expenseCategories: string[]
@@ -79,6 +92,11 @@ export function FinanceQuickRecord({
   onRecurringSubmit,
   onRecurringStatusChange,
   onRecurringRecord,
+  onTransactionUpdate,
+  onTransactionDelete,
+  onRecurringDelete,
+  onPaymentOrderUpdate,
+  onPaymentOrderDelete,
   onImportSubmit,
   onImportUndo,
   expenseCategories,
@@ -94,6 +112,14 @@ export function FinanceQuickRecord({
     String(monthlyBudgetCents / 100),
   )
   const [budgetError, setBudgetError] = useState('')
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null)
+  const [editingRecurring, setEditingRecurring] = useState<PersonalOSState['recurringTransactions'][number] | null>(null)
+  const [deletingRecurring, setDeletingRecurring] = useState<PersonalOSState['recurringTransactions'][number] | null>(null)
+  const [editingOrder, setEditingOrder] = useState<PaymentOrder | null>(null)
+  const [deletingOrder, setDeletingOrder] = useState<PaymentOrder | null>(null)
+  const [orderName, setOrderName] = useState('')
+  const [orderTotal, setOrderTotal] = useState('')
 
   const summary = summarizeFinance(transactions, monthlyBudgetCents, now)
   const visibleTransactions = filterTransactions(transactions, {
@@ -109,11 +135,15 @@ export function FinanceQuickRecord({
   )
 
   function openDialog(tab = dialogTab) {
+    setEditingTransaction(null)
+    setEditingRecurring(null)
     setBudgetError('')
     onDialogOpen(tab)
   }
 
   function closeDialog() {
+    setEditingTransaction(null)
+    setEditingRecurring(null)
     setBudgetError('')
     onDialogClose()
   }
@@ -134,22 +164,36 @@ export function FinanceQuickRecord({
     onSaved('预算已更新')
   }
 
-  function handleTransactionSubmit(input: TransactionInput) {
-    onSubmit(input)
+  function handleTransactionSubmit(
+    input: TransactionInput,
+    transactionId?: string,
+  ) {
+    if (transactionId) {
+      onTransactionUpdate(transactionId, input)
+    } else {
+      onSubmit(input)
+    }
     closeDialog()
     onSaved(
       input.kind === 'expense'
-        ? '支出已记录'
+        ? transactionId ? '支出已更新' : '支出已记录'
         : input.kind === 'income'
-          ? '收入已记录'
-          : '转账已记录',
+          ? transactionId ? '收入已更新' : '收入已记录'
+          : transactionId ? '转账已更新' : '转账已记录',
     )
   }
 
-  function handleRecurringSubmit(input: RecurringTransactionInput) {
-    onRecurringSubmit(input)
+  function handleRecurringSubmit(
+    input: RecurringTransactionInput,
+    recurringId?: string,
+  ) {
+    if (recurringId) {
+      onRecurringSubmit({ ...input, id: recurringId })
+    } else {
+      onRecurringSubmit(input)
+    }
     closeDialog()
-    onSaved('周期记录已保存')
+    onSaved(recurringId ? '周期记录已更新' : '周期记录已保存')
   }
 
   function handleImportSubmit(input: BillImportInput) {
@@ -175,12 +219,20 @@ export function FinanceQuickRecord({
         { id: 'recurring', label: '周期' },
         { id: 'budget', label: '预算' },
       ]}
-      title="添加记账记录"
+      title={
+        editingTransaction
+          ? '编辑记账记录'
+          : editingRecurring
+            ? '编辑周期记录'
+            : '添加记账记录'
+      }
     >
       {dialogTab === 'transaction' ? (
         <FinanceTransactionForm
+          key={editingTransaction?.id ?? 'new-transaction'}
           expenseCategories={expenseCategories}
           incomeCategories={incomeCategories}
+          editingTransaction={editingTransaction}
           onSubmit={handleTransactionSubmit}
           orders={paymentOrders}
           transactions={transactions}
@@ -192,8 +244,10 @@ export function FinanceQuickRecord({
         />
       ) : dialogTab === 'recurring' ? (
         <FinanceRecurringForm
+          key={editingRecurring?.id ?? 'new-recurring'}
           expenseCategories={expenseCategories}
           incomeCategories={incomeCategories}
+          editingRecurring={editingRecurring}
           onSubmit={handleRecurringSubmit}
         />
       ) : (
@@ -332,6 +386,27 @@ export function FinanceQuickRecord({
                             : ''}
                         {formatCents(item.amountCents)}
                       </b>
+                      <div className="record-actions">
+                        <button
+                          aria-label={`编辑 ${getTransactionTitle(item)}`}
+                          onClick={() => {
+                            setEditingRecurring(null)
+                            setEditingTransaction(item)
+                            onDialogOpen('transaction')
+                          }}
+                          type="button"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          aria-label={`删除 ${getTransactionTitle(item)}`}
+                          className="delete"
+                          onClick={() => setDeletingTransaction(item)}
+                          type="button"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -385,11 +460,32 @@ export function FinanceQuickRecord({
             <ul aria-label="订单进度">
               {orderProgress.map(({ order, paidCents, remainingCents, percent }) => (
                 <li key={order.id} className="order-progress">
-                  <div>
+                  <div className="wide">
                     <strong>{order.name}</strong>
                     <span>
                       {formatCents(paidCents)} / {formatCents(order.expectedTotalCents)}
                     </span>
+                    <div className="record-actions">
+                      <button
+                        aria-label={`编辑 ${order.name}`}
+                        onClick={() => {
+                          setEditingOrder(order)
+                          setOrderName(order.name)
+                          setOrderTotal(String(order.expectedTotalCents / 100))
+                        }}
+                        type="button"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        aria-label={`删除 ${order.name}`}
+                        className="delete"
+                        onClick={() => setDeletingOrder(order)}
+                        type="button"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                   <progress aria-label={`${order.name}支付进度`} max={100} value={percent} />
                   <p>未付 {formatCents(remainingCents)} · {percent}%</p>
@@ -416,6 +512,27 @@ export function FinanceQuickRecord({
                     </span>
                   </div>
                   <div className="recurring-actions">
+                    <div className="record-actions">
+                      <button
+                        aria-label={`编辑 ${item.name}`}
+                        onClick={() => {
+                          setEditingTransaction(null)
+                          setEditingRecurring(item)
+                          onDialogOpen('recurring')
+                        }}
+                        type="button"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        aria-label={`删除 ${item.name}`}
+                        className="delete"
+                        onClick={() => setDeletingRecurring(item)}
+                        type="button"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                     <button
                       disabled={!item.active}
                       onClick={() => onRecurringRecord(item.id)}
@@ -471,6 +588,90 @@ export function FinanceQuickRecord({
       </aside>
 
       {financeDialog}
+
+      <RecordDialog
+        description="修改订单名称和预计总额。"
+        onClose={() => setEditingOrder(null)}
+        open={editingOrder !== null}
+        title="编辑订单"
+      >
+        <form
+          className="finance-form dialog-form"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const totalCents = Math.round(Number(orderTotal) * 100)
+            if (!orderName.trim() || !Number.isInteger(totalCents) || totalCents <= 0) {
+              return
+            }
+            if (editingOrder) {
+              onPaymentOrderUpdate(editingOrder.id, {
+                name: orderName.trim(),
+                expectedTotalCents: totalCents,
+              })
+            }
+            setEditingOrder(null)
+            onSaved('订单已更新')
+          }}
+        >
+          <div className="finance-fields">
+            <div>
+              <label htmlFor="edit-order-name">订单名称</label>
+              <input
+                id="edit-order-name"
+                onChange={(event) => setOrderName(event.target.value)}
+                value={orderName}
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-order-total">订单总额</label>
+              <input
+                id="edit-order-total"
+                onChange={(event) => setOrderTotal(event.target.value)}
+                step="0.01"
+                type="number"
+                value={orderTotal}
+              />
+            </div>
+            <button type="submit">更新订单</button>
+          </div>
+        </form>
+      </RecordDialog>
+
+      <ConfirmDialog
+        description={`删除“${deletingTransaction ? getTransactionTitle(deletingTransaction) : ''}”后无法恢复。`}
+        onCancel={() => setDeletingTransaction(null)}
+        onConfirm={() => {
+          if (deletingTransaction) onTransactionDelete(deletingTransaction.id)
+          setDeletingTransaction(null)
+          onSaved('记账记录已删除')
+        }}
+        open={deletingTransaction !== null}
+        title="删除记账记录"
+      />
+
+      <ConfirmDialog
+        description={`删除“${deletingRecurring?.name ?? ''}”后，已生成流水会保留。`}
+        onCancel={() => setDeletingRecurring(null)}
+        onConfirm={() => {
+          if (deletingRecurring) onRecurringDelete(deletingRecurring.id)
+          setDeletingRecurring(null)
+          onSaved('周期记录已删除')
+        }}
+        open={deletingRecurring !== null}
+        title="删除周期记录"
+      />
+
+      <ConfirmDialog
+        description={`删除“${deletingOrder?.name ?? ''}”后，流水会保留并断开订单关联。`}
+        onCancel={() => setDeletingOrder(null)}
+        onConfirm={() => {
+          if (deletingOrder) onPaymentOrderDelete(deletingOrder.id)
+          setDeletingOrder(null)
+          onSaved('订单已删除')
+        }}
+        open={deletingOrder !== null}
+        title="删除订单"
+      />
     </div>
   )
 }

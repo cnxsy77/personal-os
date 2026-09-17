@@ -1,25 +1,31 @@
 import { useState, type FormEvent } from 'react'
 import { CalendarClock } from 'lucide-react'
-import type { RecurringFrequency, RecurringTransactionInput } from '../data/model'
+import type {
+  RecurringFrequency,
+  RecurringTransaction,
+  RecurringTransactionInput,
+} from '../data/model'
 
 type Props = {
   expenseCategories: string[]
   incomeCategories: string[]
-  onSubmit: (input: RecurringTransactionInput) => void
+  editingRecurring?: RecurringTransaction | null
+  onSubmit: (input: RecurringTransactionInput, recurringId?: string) => void
 }
 
 export function FinanceRecurringForm({
   expenseCategories,
   incomeCategories,
+  editingRecurring,
   onSubmit,
 }: Props) {
-  const [kind, setKind] = useState<'expense' | 'income'>('expense')
-  const [name, setName] = useState('')
-  const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState('订阅')
-  const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
-  const [nextDate, setNextDate] = useState(() => toDateKey(new Date()))
-  const [note, setNote] = useState('')
+  const [kind, setKind] = useState<'expense' | 'income'>(editingRecurring?.kind ?? 'expense')
+  const [name, setName] = useState(editingRecurring?.name ?? '')
+  const [amount, setAmount] = useState(editingRecurring ? String(editingRecurring.amountCents / 100) : '')
+  const [category, setCategory] = useState(editingRecurring?.category ?? '订阅')
+  const [frequency, setFrequency] = useState<RecurringFrequency>(editingRecurring?.frequency ?? 'monthly')
+  const [nextDate, setNextDate] = useState(editingRecurring?.nextDate ?? toDateKey(new Date()))
+  const [note, setNote] = useState(editingRecurring?.note ?? '')
   const [error, setError] = useState('')
 
   const categories = kind === 'expense' ? expenseCategories : incomeCategories
@@ -42,7 +48,7 @@ export function FinanceRecurringForm({
     }
 
     try {
-      onSubmit({
+      const input: RecurringTransactionInput = {
         name: name.trim(),
         kind,
         amountCents,
@@ -50,7 +56,8 @@ export function FinanceRecurringForm({
         frequency,
         nextDate,
         ...(note.trim() ? { note: note.trim() } : {}),
-      })
+      }
+      onSubmit(input, editingRecurring?.id)
       setName('')
       setAmount('')
       setNote('')
@@ -159,7 +166,7 @@ export function FinanceRecurringForm({
         </div>
         <button type="submit">
           <CalendarClock size={16} />
-          保存周期
+          {editingRecurring ? '更新周期' : '保存周期'}
         </button>
       </div>
       {error ? <p role="alert">{error}</p> : null}

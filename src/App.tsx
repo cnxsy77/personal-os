@@ -10,7 +10,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { createLocalPersonalOSData } from './data/localPersonalOSData'
-import type { PersonalOSData } from './data/model'
+import type { PersonalOSData, Task } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
 import { RecordDialog } from './components/RecordDialog'
 import { SettingsDrawer } from './components/SettingsDrawer'
@@ -77,12 +77,16 @@ export default function App({ data = defaultData }: AppProps) {
   const [quickRecord, setQuickRecord] = useState<QuickRecordTarget | null>(null)
   const [domainPickerOpen, setDomainPickerOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [overviewEditingTask, setOverviewEditingTask] = useState<Task | null>(
+    null,
+  )
   const [toastMessage, setToastMessage] = useState('')
   const toastTimerRef = useRef<number | undefined>(undefined)
   const state = usePersonalOSData(data)
 
   const closeQuickRecord = useCallback(() => {
     setQuickRecord(null)
+    setOverviewEditingTask(null)
   }, [])
 
   const closeDomainPicker = useCallback(() => {
@@ -110,6 +114,7 @@ export default function App({ data = defaultData }: AppProps) {
     setQuickRecord(null)
     setDomainPickerOpen(false)
     setSettingsOpen(false)
+    setOverviewEditingTask(null)
     setMobileOpen(false)
   }
 
@@ -205,6 +210,8 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onTaskSubmit={data.addTask}
+            onTaskUpdate={data.updateTask}
+            onTaskDelete={data.deleteTask}
             onTaskToggle={data.toggleTask}
           />
         ) : active === 'finance' ? (
@@ -224,6 +231,11 @@ export default function App({ data = defaultData }: AppProps) {
             onRecurringSubmit={data.saveRecurringTransaction}
             onRecurringStatusChange={data.setRecurringTransactionStatus}
             onRecurringRecord={data.recordRecurringTransaction}
+            onTransactionUpdate={data.updateTransaction}
+            onTransactionDelete={data.deleteTransaction}
+            onRecurringDelete={data.deleteRecurringTransaction}
+            onPaymentOrderUpdate={data.updatePaymentOrder}
+            onPaymentOrderDelete={data.deletePaymentOrder}
             onImportSubmit={data.importBillTransactions}
             onImportUndo={data.undoBillImport}
             expenseCategories={state.settings.expenseCategories}
@@ -234,6 +246,9 @@ export default function App({ data = defaultData }: AppProps) {
             studyLogs={state.studyLogs}
             learningPaths={state.learningPaths}
             learningResources={state.learningResources}
+            learningLessons={state.learningLessons}
+            learningNoteFolders={state.learningNoteFolders}
+            learningNotes={state.learningNotes}
             weeklyReviews={state.weeklyReviews}
             dialogOpen={quickRecord?.domain === 'learning'}
             dialogTab={quickRecord?.tab ?? 'log'}
@@ -241,10 +256,27 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onSubmit={data.recordStudyLog}
+            onStudyUpdate={data.updateStudyLog}
+            onStudyDelete={data.deleteStudyLog}
             onPathSubmit={data.addLearningPath}
+            onPathUpdate={data.updateLearningPath}
+            onPathDelete={data.deleteLearningPath}
             onResourceSubmit={data.addLearningResource}
+            onResourceUpdate={data.updateLearningResource}
+            onResourceDelete={data.deleteLearningResource}
             onResourceStatusChange={data.setLearningResourceStatus}
+            onLessonsSubmit={data.addLearningLessons}
+            onLessonStatusChange={data.setLearningLessonStatus}
+            onLessonUpdate={data.updateLearningLesson}
+            onLessonDelete={data.deleteLearningLesson}
+            onNoteFolderSubmit={data.addLearningNoteFolder}
+            onNoteFolderUpdate={data.updateLearningNoteFolder}
+            onNoteFolderDelete={data.deleteLearningNoteFolder}
+            onNoteSubmit={data.saveLearningNote}
+            onNoteDelete={data.deleteLearningNote}
             onReviewSubmit={data.saveWeeklyReview}
+            onReviewUpdate={data.updateWeeklyReview}
+            onReviewDelete={data.deleteWeeklyReview}
           />
         ) : active === 'health' ? (
           <HealthQuickRecord
@@ -258,6 +290,9 @@ export default function App({ data = defaultData }: AppProps) {
             onWorkoutSubmit={data.recordWorkout}
             onWorkoutUpdate={data.updateWorkout}
             onMetricSubmit={data.saveHealthMetric}
+            onWorkoutDelete={data.deleteWorkout}
+            onMetricUpdate={data.updateHealthMetric}
+            onMetricDelete={data.deleteHealthMetric}
             weeklyWorkoutTarget={state.settings.weeklyWorkoutTarget}
           />
         ) : active === 'workbench' ? (
@@ -269,10 +304,20 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onProjectSubmit={data.addProject}
+            onProjectUpdate={data.updateProject}
+            onProjectDelete={data.deleteProject}
             onProjectStatusChange={data.setProjectStatus}
           />
         ) : (
-          <OverviewConsole state={state} onTaskToggle={data.toggleTask} />
+          <OverviewConsole
+            state={state}
+            onTaskToggle={data.toggleTask}
+            onTaskEdit={(task) => {
+              setOverviewEditingTask(task)
+              openQuickRecord('plan', 'task')
+            }}
+            onTaskDelete={data.deleteTask}
+          />
         )}
 
         {active === 'overview' && quickRecord?.domain === 'plan' ? (
@@ -284,7 +329,10 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onTaskSubmit={data.addTask}
+            onTaskUpdate={data.updateTask}
+            onTaskDelete={data.deleteTask}
             onTaskToggle={data.toggleTask}
+            externalEditingTask={overviewEditingTask}
           />
         ) : null}
 
@@ -301,6 +349,9 @@ export default function App({ data = defaultData }: AppProps) {
             onWorkoutSubmit={data.recordWorkout}
             onWorkoutUpdate={data.updateWorkout}
             onMetricSubmit={data.saveHealthMetric}
+            onWorkoutDelete={data.deleteWorkout}
+            onMetricUpdate={data.updateHealthMetric}
+            onMetricDelete={data.deleteHealthMetric}
             weeklyWorkoutTarget={state.settings.weeklyWorkoutTarget}
           />
         ) : null}
@@ -323,6 +374,11 @@ export default function App({ data = defaultData }: AppProps) {
             onRecurringSubmit={data.saveRecurringTransaction}
             onRecurringStatusChange={data.setRecurringTransactionStatus}
             onRecurringRecord={data.recordRecurringTransaction}
+            onTransactionUpdate={data.updateTransaction}
+            onTransactionDelete={data.deleteTransaction}
+            onRecurringDelete={data.deleteRecurringTransaction}
+            onPaymentOrderUpdate={data.updatePaymentOrder}
+            onPaymentOrderDelete={data.deletePaymentOrder}
             onImportSubmit={data.importBillTransactions}
             onImportUndo={data.undoBillImport}
             expenseCategories={state.settings.expenseCategories}
@@ -335,6 +391,9 @@ export default function App({ data = defaultData }: AppProps) {
             studyLogs={state.studyLogs}
             learningPaths={state.learningPaths}
             learningResources={state.learningResources}
+            learningLessons={state.learningLessons}
+            learningNoteFolders={state.learningNoteFolders}
+            learningNotes={state.learningNotes}
             weeklyReviews={state.weeklyReviews}
             dialogOpen
             dialogTab={quickRecord.tab ?? 'log'}
@@ -343,10 +402,27 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onSubmit={data.recordStudyLog}
+            onStudyUpdate={data.updateStudyLog}
+            onStudyDelete={data.deleteStudyLog}
             onPathSubmit={data.addLearningPath}
+            onPathUpdate={data.updateLearningPath}
+            onPathDelete={data.deleteLearningPath}
             onResourceSubmit={data.addLearningResource}
+            onResourceUpdate={data.updateLearningResource}
+            onResourceDelete={data.deleteLearningResource}
             onResourceStatusChange={data.setLearningResourceStatus}
+            onLessonsSubmit={data.addLearningLessons}
+            onLessonStatusChange={data.setLearningLessonStatus}
+            onLessonUpdate={data.updateLearningLesson}
+            onLessonDelete={data.deleteLearningLesson}
+            onNoteFolderSubmit={data.addLearningNoteFolder}
+            onNoteFolderUpdate={data.updateLearningNoteFolder}
+            onNoteFolderDelete={data.deleteLearningNoteFolder}
+            onNoteSubmit={data.saveLearningNote}
+            onNoteDelete={data.deleteLearningNote}
             onReviewSubmit={data.saveWeeklyReview}
+            onReviewUpdate={data.updateWeeklyReview}
+            onReviewDelete={data.deleteWeeklyReview}
           />
         ) : null}
 
@@ -360,6 +436,8 @@ export default function App({ data = defaultData }: AppProps) {
             onDialogClose={closeQuickRecord}
             onSaved={showSavedToast}
             onProjectSubmit={data.addProject}
+            onProjectUpdate={data.updateProject}
+            onProjectDelete={data.deleteProject}
             onProjectStatusChange={data.setProjectStatus}
           />
         ) : null}
@@ -386,13 +464,16 @@ export default function App({ data = defaultData }: AppProps) {
           </div>
         </RecordDialog>
 
-        <SettingsDrawer
-          activePage={active}
-          onClose={() => setSettingsOpen(false)}
-          onSettingsChange={data.updateSettings}
-          open={settingsOpen}
-          settings={state.settings}
-        />
+        {settingsOpen ? (
+          <SettingsDrawer
+            activePage={active}
+            onCategoryRename={data.renameCategory}
+            onClose={() => setSettingsOpen(false)}
+            onSettingsChange={data.updateSettings}
+            open
+            settings={state.settings}
+          />
+        ) : null}
 
         {toastMessage ? <Toast message={toastMessage} /> : null}
       </section>

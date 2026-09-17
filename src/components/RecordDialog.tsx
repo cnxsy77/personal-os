@@ -45,7 +45,9 @@ export function RecordDialog({
 
     triggerRef.current = document.activeElement
     const previousOverflow = document.body.style.overflow
+    const previousRootOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
     panelRef.current?.focus({ preventScroll: true })
 
     function handleKeyDown(event: globalThis.KeyboardEvent) {
@@ -72,6 +74,7 @@ export function RecordDialog({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = previousOverflow
+      document.documentElement.style.overflow = previousRootOverflow
       const trigger = triggerRef.current
 
       if (trigger instanceof HTMLElement) {

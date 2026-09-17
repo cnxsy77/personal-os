@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createLocalPersonalOSData } from '../data/localPersonalOSData'
 import { createMemoryStorage } from '../test/memoryStorage'
 import { OverviewConsole } from './OverviewConsole'
@@ -14,7 +14,13 @@ describe('OverviewConsole', () => {
   it('renders KPI values and four domain progress bars from current data', () => {
     const data = createAppData()
 
-    render(<OverviewConsole state={data.getSnapshot()} onTaskToggle={data.toggleTask} />)
+    render(
+      <OverviewConsole
+        state={data.getSnapshot()}
+        onTaskToggle={data.toggleTask}
+        onTaskDelete={data.deleteTask}
+      />,
+    )
 
     expect(screen.getByText('今日待办')).toBeInTheDocument()
     expect(screen.getAllByText('3')[0]).toBeInTheDocument()
@@ -32,7 +38,13 @@ describe('OverviewConsole', () => {
     const user = userEvent.setup()
     const data = createAppData()
 
-    render(<OverviewConsole state={data.getSnapshot()} onTaskToggle={data.toggleTask} />)
+    render(
+      <OverviewConsole
+        state={data.getSnapshot()}
+        onTaskToggle={data.toggleTask}
+        onTaskDelete={data.deleteTask}
+      />,
+    )
 
     const table = screen.getByRole('table')
 
@@ -53,7 +65,11 @@ describe('OverviewConsole', () => {
     const data = createAppData()
 
     const view = render(
-      <OverviewConsole state={data.getSnapshot()} onTaskToggle={data.toggleTask} />,
+      <OverviewConsole
+        state={data.getSnapshot()}
+        onTaskToggle={data.toggleTask}
+        onTaskDelete={data.deleteTask}
+      />,
     )
 
     await user.click(
@@ -61,7 +77,11 @@ describe('OverviewConsole', () => {
     )
 
     view.rerender(
-      <OverviewConsole state={data.getSnapshot()} onTaskToggle={data.toggleTask} />,
+      <OverviewConsole
+        state={data.getSnapshot()}
+        onTaskToggle={data.toggleTask}
+        onTaskDelete={data.deleteTask}
+      />,
     )
 
     expect(
@@ -85,7 +105,13 @@ describe('OverviewConsole', () => {
       monthlyBudgetCents: 100000,
     }
 
-    render(<OverviewConsole state={state} onTaskToggle={data.toggleTask} />)
+    render(
+      <OverviewConsole
+        state={state}
+        onTaskToggle={data.toggleTask}
+        onTaskDelete={data.deleteTask}
+      />,
+    )
 
     const decisionList = screen.getByRole('list', { name: '需要决策' })
 
@@ -93,5 +119,45 @@ describe('OverviewConsole', () => {
     expect(within(decisionList).getByText('下一步：完成项目工作台')).toBeInTheDocument()
     expect(within(decisionList).getByText('预算已超支 ¥72')).toBeInTheDocument()
     expect(within(decisionList).getByText('请复核本月支出')).toBeInTheDocument()
+  })
+
+  it('opens task edit and deletes a task after confirmation', async () => {
+    const user = userEvent.setup()
+    const data = createAppData()
+    const onTaskEdit = vi.fn()
+    const task = data.getSnapshot().tasks[0]!
+
+    const view = render(
+      <OverviewConsole
+        state={data.getSnapshot()}
+        onTaskToggle={data.toggleTask}
+        onTaskEdit={onTaskEdit}
+        onTaskDelete={data.deleteTask}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: `编辑${task.title}` }))
+    expect(onTaskEdit).toHaveBeenCalledWith(task)
+
+    await user.click(screen.getByRole('button', { name: `删除${task.title}` }))
+    expect(screen.getByRole('alertdialog', { name: '删除任务' })).toBeInTheDocument()
+    expect(data.getSnapshot().tasks).toHaveLength(3)
+
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(data.getSnapshot().tasks).toHaveLength(3)
+
+    await user.click(screen.getByRole('button', { name: `删除${task.title}` }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+
+    view.rerender(
+      <OverviewConsole
+        state={data.getSnapshot()}
+        onTaskToggle={data.toggleTask}
+        onTaskEdit={onTaskEdit}
+        onTaskDelete={data.deleteTask}
+      />,
+    )
+    expect(data.getSnapshot().tasks).toHaveLength(2)
+    expect(screen.queryByText(task.title)).not.toBeInTheDocument()
   })
 })

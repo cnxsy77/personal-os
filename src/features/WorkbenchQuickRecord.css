@@ -128,7 +128,7 @@
   background: transparent;
   color: #94a096;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -147,7 +147,7 @@
 
 .project-list li {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 120px;
+  grid-template-columns: auto minmax(0, 1fr) 150px auto;
   align-items: center;
   gap: 14px;
   padding: 18px;
@@ -183,7 +183,7 @@
   display: block;
   margin: 0;
   color: #93a095;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .project-list small {
@@ -199,7 +199,7 @@
   background: #111713;
   color: #eaf0ea;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .workbench-side section + section {
@@ -254,12 +254,12 @@
 
 .project-distribution span {
   color: #b6c1b7;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .project-distribution b {
   color: #eaf0ea;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .distribution-track {
@@ -306,19 +306,25 @@
   font-size: 14px;
 }
 
+.workbench-panel [role='alert'],
+.project-list p,
+.project-list small {
+  font-size: max(14px, 0.82em);
+}
+
 .due-list p {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .due-list b {
   color: #d8fa71;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .workbench-panel [role='alert'] {
   margin: 12px 0 0;
   color: #ff9a8b;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 @media (max-width: 1080px) {
@@ -355,5 +361,10 @@
 
   .project-list select {
     grid-column: 1 / -1;
+  }
+
+  .project-list .record-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 }

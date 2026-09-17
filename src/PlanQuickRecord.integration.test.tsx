@@ -77,6 +77,55 @@ describe('plan quick capture', () => {
     expect(data.getSnapshot().tasks).toHaveLength(3)
   })
 
+  it('edits a planned task with its current values', async () => {
+    const user = userEvent.setup()
+    const data = createTestData()
+
+    data.addTask({
+      title: '准备架构评审',
+      date: '2026-09-15',
+      category: 'work',
+      time: '09:30',
+    })
+    const taskId = data.getSnapshot().tasks.at(-1)?.id
+    expect(taskId).toBeTruthy()
+    data.toggleTask(taskId!)
+
+    render(<App data={data} />)
+    await user.click(screen.getByRole('button', { name: '计划' }))
+    await user.selectOptions(screen.getByLabelText('状态'), '全部状态')
+    await user.click(screen.getByRole('button', { name: '全部' }))
+    await user.click(screen.getByRole('button', { name: '编辑 准备架构评审' }))
+
+    expect(screen.getByRole('dialog', { name: '编辑计划' })).toBeInTheDocument()
+    expect(screen.getByLabelText('计划事项')).toHaveValue('准备架构评审')
+    expect(screen.getByLabelText('计划日期')).toHaveValue('2026-09-15')
+    expect(screen.getByLabelText('计划分类')).toHaveValue('work')
+    expect(screen.getByLabelText('计划时间')).toHaveValue('09:30')
+
+    await user.clear(screen.getByLabelText('计划事项'))
+    await user.type(screen.getByLabelText('计划事项'), '主持架构评审')
+    fireEvent.change(screen.getByLabelText('计划日期'), {
+      target: { value: '2026-09-16' },
+    })
+    fireEvent.change(screen.getByLabelText('计划时间'), {
+      target: { value: '14:00' },
+    })
+    await user.click(screen.getByRole('button', { name: '更新计划' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('计划已更新')).toBeInTheDocument()
+    expect(screen.getByText('主持架构评审')).toBeInTheDocument()
+    expect(data.getSnapshot().tasks.at(-1)).toMatchObject({
+      id: taskId,
+      title: '主持架构评审',
+      date: '2026-09-16',
+      time: '14:00',
+      category: 'work',
+      done: true,
+    })
+  })
+
   it('groups tasks by time and filters the plan stream', async () => {
     const user = userEvent.setup()
     const data = createTestData()
@@ -137,5 +186,34 @@ describe('plan quick capture', () => {
 
     await user.type(screen.getByLabelText('搜索'), '不存在的任务')
     expect(screen.getByText('没有匹配的计划')).toBeInTheDocument()
+  })
+
+  it('deletes a planned task only after confirmation', async () => {
+    const user = userEvent.setup()
+    const data = createTestData()
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '计划' }))
+    await user.click(screen.getByRole('button', { name: '全部' }))
+    await user.click(
+      screen.getByRole('button', { name: '删除 学习 React 架构设计 45 分钟' }),
+    )
+
+    expect(screen.getByRole('alertdialog', { name: '删除计划' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    expect(data.getSnapshot().tasks).toHaveLength(3)
+
+    await user.click(
+      screen.getByRole('button', { name: '删除 学习 React 架构设计 45 分钟' }),
+    )
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
+
+    expect(data.getSnapshot().tasks).toHaveLength(2)
+    expect(screen.getByText('计划已删除')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: '删除 学习 React 架构设计 45 分钟',
+      }),
+    ).not.toBeInTheDocument()
   })
 })
