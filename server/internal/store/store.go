@@ -114,21 +114,8 @@ func (s *Store) Migrate(ctx context.Context) error {
 
 func (s *Store) LoadState(ctx context.Context) (model.State, error) {
 	state := model.State{
-		Tasks:                 []model.Task{},
-		Projects:              []model.Project{},
-		Transactions:          []map[string]any{},
-		StudyLogs:             []map[string]any{},
-		LearningPaths:         []map[string]any{},
-		LearningResources:     []map[string]any{},
-		LearningLessons:       []map[string]any{},
-		LearningNoteFolders:   []map[string]any{},
-		LearningNotes:         []map[string]any{},
-		WeeklyReviews:         []map[string]any{},
-		Workouts:              []map[string]any{},
-		HealthMetrics:         []map[string]any{},
-		PaymentOrders:         []map[string]any{},
-		RecurringTransactions: []map[string]any{},
-		BillImports:           []map[string]any{},
+		Tasks:    []model.Task{},
+		Projects: []model.Project{},
 	}
 
 	if err := s.loadSettings(ctx, &state.Settings); err != nil {
@@ -138,6 +125,14 @@ func (s *Store) LoadState(ctx context.Context) (model.State, error) {
 		return state, err
 	}
 	if err := s.loadProjects(ctx, &state.Projects); err != nil {
+		return state, err
+	}
+	budgetCents, budgetErr := s.loadMonthlyBudget(ctx)
+	if budgetErr != nil {
+		return state, budgetErr
+	}
+	state.MonthlyBudgetCents = budgetCents
+	if err := s.loadDomainState(ctx, &state); err != nil {
 		return state, err
 	}
 	return state, nil
@@ -182,6 +177,12 @@ func (s *Store) loadSettings(ctx context.Context, settings *model.Settings) erro
 		settings.IncomeCategories = []string{}
 	}
 	return nil
+}
+
+func (s *Store) loadMonthlyBudget(ctx context.Context) (int, error) {
+	var budget int
+	err := s.db.QueryRowContext(ctx, `SELECT monthly_budget_cents FROM settings WHERE id = 'default'`).Scan(&budget)
+	return budget, err
 }
 
 func (s *Store) loadTasks(ctx context.Context, tasks *[]model.Task) error {
