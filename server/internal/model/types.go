@@ -330,10 +330,36 @@ type Workout struct {
 	CoachNotes      []string          `json:"coachNotes,omitempty"`
 }
 
+type WorkoutInput struct {
+	Date            string            `json:"date"`
+	Kind            WorkoutKind       `json:"kind"`
+	Kinds           []WorkoutKind     `json:"kinds,omitempty"`
+	Status          WorkoutStatus     `json:"status,omitempty"`
+	DurationMinutes int               `json:"durationMinutes"`
+	Notes           string            `json:"notes"`
+	Plan            []string          `json:"plan,omitempty"`
+	Focus           string            `json:"focus,omitempty"`
+	Warmup          []string          `json:"warmup,omitempty"`
+	Exercises       []WorkoutExercise `json:"exercises,omitempty"`
+	Finisher        []string          `json:"finisher,omitempty"`
+	SorenessAreas   []string          `json:"sorenessAreas,omitempty"`
+	CoachNotes      []string          `json:"coachNotes,omitempty"`
+}
+
 type HealthCondition string
 
 type HealthMetric struct {
 	ID                   string          `json:"id"`
+	Date                 string          `json:"date"`
+	SleepHours           float64         `json:"sleepHours"`
+	WeightKg             *float64        `json:"weightKg"`
+	Condition            HealthCondition `json:"condition"`
+	MenstruationFlow     string          `json:"menstruationFlow,omitempty"`
+	MenstruationSymptoms []string        `json:"menstruationSymptoms,omitempty"`
+	MenstruationNote     string          `json:"menstruationNote,omitempty"`
+}
+
+type HealthMetricInput struct {
 	Date                 string          `json:"date"`
 	SleepHours           float64         `json:"sleepHours"`
 	WeightKg             *float64        `json:"weightKg"`

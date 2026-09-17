@@ -81,6 +81,13 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/weekly-reviews", s.write(s.saveWeeklyReview))
 	mux.HandleFunc("PATCH /api/weekly-reviews/{id}", s.write(s.updateWeeklyReview))
 	mux.HandleFunc("DELETE /api/weekly-reviews/{id}", s.write(s.deleteWeeklyReview))
+	mux.HandleFunc("POST /api/workouts", s.write(s.createWorkout))
+	mux.HandleFunc("PATCH /api/workouts/{id}", s.write(s.updateWorkout))
+	mux.HandleFunc("PATCH /api/workouts/{id}/status", s.write(s.setWorkoutStatus))
+	mux.HandleFunc("DELETE /api/workouts/{id}", s.write(s.deleteWorkout))
+	mux.HandleFunc("POST /api/health-metrics", s.write(s.saveHealthMetric))
+	mux.HandleFunc("PATCH /api/health-metrics/{id}", s.write(s.saveHealthMetric))
+	mux.HandleFunc("DELETE /api/health-metrics/{id}", s.write(s.deleteHealthMetric))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -269,7 +276,7 @@ func writeStoreError(w http.ResponseWriter, err error) {
 	switch message {
 	case "计划任务不存在", "项目不存在", "记账记录不存在", "周期记录不存在", "订单不存在", "导入批次不存在",
 		"学习记录不存在", "学习路径不存在", "学习资料不存在", "学习课时不存在", "学习笔记不存在",
-		"笔记文件夹不存在", "周复盘不存在":
+		"笔记文件夹不存在", "周复盘不存在", "训练记录不存在", "身体指标记录不存在":
 		writeError(w, http.StatusNotFound, "not_found", message)
 	default:
 		writeError(w, http.StatusBadRequest, "invalid_input", message)
