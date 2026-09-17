@@ -185,8 +185,24 @@ type StudyLog struct {
 	Note       string           `json:"note,omitempty"`
 }
 
+type StudyLogInput struct {
+	Topic      string           `json:"topic"`
+	Minutes    int              `json:"minutes"`
+	Date       string           `json:"date"`
+	PathID     *string          `json:"pathId,omitempty"`
+	Platform   LearningPlatform `json:"platform,omitempty"`
+	ResourceID *string          `json:"resourceId,omitempty"`
+	LessonID   *string          `json:"lessonId,omitempty"`
+	Note       *string          `json:"note,omitempty"`
+}
+
 type LearningPath struct {
 	ID            string `json:"id"`
+	Title         string `json:"title"`
+	TargetMinutes int    `json:"targetMinutes"`
+}
+
+type LearningPathInput struct {
 	Title         string `json:"title"`
 	TargetMinutes int    `json:"targetMinutes"`
 }
@@ -194,6 +210,17 @@ type LearningPath struct {
 type LearningResource struct {
 	ID            string           `json:"id"`
 	PathID        *string          `json:"pathId"`
+	Title         string           `json:"title"`
+	Kind          string           `json:"kind"`
+	Status        string           `json:"status"`
+	Platform      LearningPlatform `json:"platform,omitempty"`
+	SourceURL     string           `json:"sourceUrl,omitempty"`
+	ExternalID    string           `json:"externalId,omitempty"`
+	TargetMinutes *int             `json:"targetMinutes,omitempty"`
+}
+
+type LearningResourceInput struct {
+	PathID        *string          `json:"pathId,omitempty"`
 	Title         string           `json:"title"`
 	Kind          string           `json:"kind"`
 	Status        string           `json:"status"`
@@ -213,10 +240,33 @@ type LearningLesson struct {
 	SourceURL       string `json:"sourceUrl,omitempty"`
 }
 
+type LearningLessonDraftInput struct {
+	Title           string `json:"title"`
+	Status          string `json:"status,omitempty"`
+	ExpectedMinutes *int   `json:"expectedMinutes,omitempty"`
+	SourceURL       string `json:"sourceUrl,omitempty"`
+}
+
+type LearningLessonsInput struct {
+	ResourceID string                     `json:"resourceId"`
+	Lessons    []LearningLessonDraftInput `json:"lessons"`
+}
+
+type LearningLessonUpdateInput struct {
+	Title           string `json:"title"`
+	Status          string `json:"status"`
+	ExpectedMinutes *int   `json:"expectedMinutes,omitempty"`
+	SourceURL       string `json:"sourceUrl,omitempty"`
+}
+
 type NoteFolder struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	CreatedAt string `json:"createdAt"`
+}
+
+type NoteFolderInput struct {
+	Name string `json:"name"`
 }
 
 type Note struct {
@@ -230,6 +280,16 @@ type Note struct {
 	UpdatedAt  string   `json:"updatedAt"`
 }
 
+type LearningNoteInput struct {
+	ID         *string  `json:"id,omitempty"`
+	FolderID   *string  `json:"folderId,omitempty"`
+	Title      string   `json:"title"`
+	Content    string   `json:"content"`
+	Tags       []string `json:"tags"`
+	ResourceID *string  `json:"resourceId,omitempty"`
+	LessonID   *string  `json:"lessonId,omitempty"`
+}
+
 type WeeklyReview struct {
 	ID            string `json:"id"`
 	WeekStartDate string `json:"weekStartDate"`
@@ -238,6 +298,12 @@ type WeeklyReview struct {
 	NextFocus     string `json:"nextFocus"`
 }
 
+type WeeklyReviewInput struct {
+	WeekStartDate string `json:"weekStartDate"`
+	Wins          string `json:"wins"`
+	Blockers      string `json:"blockers"`
+	NextFocus     string `json:"nextFocus"`
+}
 type WorkoutKind string
 type WorkoutStatus string
 

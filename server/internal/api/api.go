@@ -57,6 +57,30 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/payment-orders/{id}", s.write(s.deletePaymentOrder))
 	mux.HandleFunc("POST /api/bill-imports", s.write(s.importBillTransactions))
 	mux.HandleFunc("DELETE /api/bill-imports/{id}", s.write(s.undoBillImport))
+	mux.HandleFunc("POST /api/study-logs", s.write(s.createStudyLog))
+	mux.HandleFunc("PATCH /api/study-logs/{id}", s.write(s.updateStudyLog))
+	mux.HandleFunc("DELETE /api/study-logs/{id}", s.write(s.deleteStudyLog))
+	mux.HandleFunc("POST /api/learning-paths", s.write(s.createLearningPath))
+	mux.HandleFunc("PATCH /api/learning-paths/{id}", s.write(s.updateLearningPath))
+	mux.HandleFunc("DELETE /api/learning-paths/{id}", s.write(s.deleteLearningPath))
+	mux.HandleFunc("POST /api/learning-resources", s.write(s.createLearningResource))
+	mux.HandleFunc("PATCH /api/learning-resources/{id}", s.write(s.updateLearningResource))
+	mux.HandleFunc("DELETE /api/learning-resources/{id}", s.write(s.deleteLearningResource))
+	mux.HandleFunc("PATCH /api/learning-resources/{id}/status", s.write(s.setLearningResourceStatus))
+	mux.HandleFunc("POST /api/learning-lessons", s.write(s.addLearningLessons))
+	mux.HandleFunc("POST /api/learning-resources/{id}/lessons", s.write(s.addLearningLessons))
+	mux.HandleFunc("PATCH /api/learning-lessons/{id}", s.write(s.updateLearningLesson))
+	mux.HandleFunc("PATCH /api/learning-lessons/{id}/status", s.write(s.setLearningLessonStatus))
+	mux.HandleFunc("DELETE /api/learning-lessons/{id}", s.write(s.deleteLearningLesson))
+	mux.HandleFunc("POST /api/learning-note-folders", s.write(s.createLearningNoteFolder))
+	mux.HandleFunc("PATCH /api/learning-note-folders/{id}", s.write(s.updateLearningNoteFolder))
+	mux.HandleFunc("DELETE /api/learning-note-folders/{id}", s.write(s.deleteLearningNoteFolder))
+	mux.HandleFunc("POST /api/learning-notes", s.write(s.saveLearningNote))
+	mux.HandleFunc("PATCH /api/learning-notes/{id}", s.write(s.saveLearningNote))
+	mux.HandleFunc("DELETE /api/learning-notes/{id}", s.write(s.deleteLearningNote))
+	mux.HandleFunc("POST /api/weekly-reviews", s.write(s.saveWeeklyReview))
+	mux.HandleFunc("PATCH /api/weekly-reviews/{id}", s.write(s.updateWeeklyReview))
+	mux.HandleFunc("DELETE /api/weekly-reviews/{id}", s.write(s.deleteWeeklyReview))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -243,7 +267,9 @@ func decode(r *http.Request, value any) error {
 func writeStoreError(w http.ResponseWriter, err error) {
 	message := err.Error()
 	switch message {
-	case "计划任务不存在", "项目不存在", "记账记录不存在", "周期记录不存在", "订单不存在", "导入批次不存在":
+	case "计划任务不存在", "项目不存在", "记账记录不存在", "周期记录不存在", "订单不存在", "导入批次不存在",
+		"学习记录不存在", "学习路径不存在", "学习资料不存在", "学习课时不存在", "学习笔记不存在",
+		"笔记文件夹不存在", "周复盘不存在":
 		writeError(w, http.StatusNotFound, "not_found", message)
 	default:
 		writeError(w, http.StatusBadRequest, "invalid_input", message)
