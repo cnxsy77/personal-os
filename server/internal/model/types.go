@@ -46,6 +46,20 @@ type Settings struct {
 	ReducedMotion       bool     `json:"reducedMotion"`
 }
 
+type SettingsInput struct {
+	WeeklyWorkoutTarget *int      `json:"weeklyWorkoutTarget,omitempty"`
+	ExpenseCategories   *[]string `json:"expenseCategories,omitempty"`
+	IncomeCategories    *[]string `json:"incomeCategories,omitempty"`
+	FontScale           *string   `json:"fontScale,omitempty"`
+	ReducedMotion       *bool     `json:"reducedMotion,omitempty"`
+}
+
+type RenameCategoryInput struct {
+	Kind string `json:"kind"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
 type TransactionKind string
 type TransactionTag string
 type PaymentStage string
@@ -70,6 +84,31 @@ type Transaction struct {
 	ImportID             *string         `json:"importId,omitempty"`
 }
 
+type PaymentOrderInput struct {
+	Name               string `json:"name"`
+	ExpectedTotalCents int64  `json:"expectedTotalCents"`
+}
+
+type TransactionInput struct {
+	Kind                 TransactionKind    `json:"kind"`
+	AmountCents          int64              `json:"amountCents"`
+	Category             string             `json:"category"`
+	Date                 string             `json:"date"`
+	Note                 *string            `json:"note,omitempty"`
+	Tag                  TransactionTag     `json:"tag,omitempty"`
+	OrderID              *string            `json:"orderId,omitempty"`
+	Stage                PaymentStage       `json:"stage,omitempty"`
+	RecurringID          *string            `json:"recurringId,omitempty"`
+	RelatedTransactionID *string            `json:"relatedTransactionId,omitempty"`
+	Counterparty         *string            `json:"counterparty,omitempty"`
+	Source               BillSource         `json:"source,omitempty"`
+	SourceTradeNo        *string            `json:"sourceTradeNo,omitempty"`
+	OccurredAt           *string            `json:"occurredAt,omitempty"`
+	NewOrder             *PaymentOrderInput `json:"newOrder,omitempty"`
+}
+
+type TransactionUpdateInput TransactionInput
+
 type PaymentOrder struct {
 	ID                 string `json:"id"`
 	Name               string `json:"name"`
@@ -89,6 +128,18 @@ type Recurring struct {
 	Active      bool   `json:"active"`
 }
 
+type RecurringInput struct {
+	ID          *string `json:"id,omitempty"`
+	Name        string  `json:"name"`
+	Kind        string  `json:"kind"`
+	AmountCents int64   `json:"amountCents"`
+	Category    string  `json:"category"`
+	Frequency   string  `json:"frequency"`
+	NextDate    string  `json:"nextDate"`
+	Note        *string `json:"note,omitempty"`
+	Active      *bool   `json:"active,omitempty"`
+}
+
 type BillImport struct {
 	ID             string     `json:"id"`
 	Source         BillSource `json:"source"`
@@ -97,6 +148,29 @@ type BillImport struct {
 	TransactionIDs []string   `json:"transactionIds"`
 }
 
+type BillImportTransactionInput struct {
+	Kind          TransactionKind `json:"kind"`
+	AmountCents   int64           `json:"amountCents"`
+	Category      string          `json:"category"`
+	Date          string          `json:"date"`
+	Note          *string         `json:"note,omitempty"`
+	Tag           TransactionTag  `json:"tag,omitempty"`
+	Counterparty  *string         `json:"counterparty,omitempty"`
+	SourceTradeNo *string         `json:"sourceTradeNo,omitempty"`
+	OccurredAt    *string         `json:"occurredAt,omitempty"`
+}
+
+type BillImportInput struct {
+	Source       BillSource                   `json:"source"`
+	FileName     string                       `json:"fileName"`
+	Transactions []BillImportTransactionInput `json:"transactions"`
+}
+
+type BillImportResult struct {
+	ImportedCount  int     `json:"importedCount"`
+	DuplicateCount int     `json:"duplicateCount"`
+	ImportID       *string `json:"importId,omitempty"`
+}
 type LearningPlatform string
 
 type StudyLog struct {

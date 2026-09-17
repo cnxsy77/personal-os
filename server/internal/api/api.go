@@ -42,6 +42,21 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/projects/{id}", s.write(s.updateProject))
 	mux.HandleFunc("PATCH /api/projects/{id}/status", s.write(s.setProjectStatus))
 	mux.HandleFunc("DELETE /api/projects/{id}", s.write(s.deleteProject))
+	mux.HandleFunc("PATCH /api/settings", s.write(s.updateSettings))
+	mux.HandleFunc("PATCH /api/settings/budget", s.write(s.updateMonthlyBudget))
+	mux.HandleFunc("POST /api/settings/categories/rename", s.write(s.renameCategory))
+	mux.HandleFunc("POST /api/transactions", s.write(s.createTransaction))
+	mux.HandleFunc("PATCH /api/transactions/{id}", s.write(s.updateTransaction))
+	mux.HandleFunc("DELETE /api/transactions/{id}", s.write(s.deleteTransaction))
+	mux.HandleFunc("POST /api/recurring-transactions", s.write(s.saveRecurringTransaction))
+	mux.HandleFunc("PATCH /api/recurring-transactions/{id}/status", s.write(s.setRecurringTransactionStatus))
+	mux.HandleFunc("POST /api/recurring-transactions/{id}/record", s.write(s.recordRecurringTransaction))
+	mux.HandleFunc("DELETE /api/recurring-transactions/{id}", s.write(s.deleteRecurringTransaction))
+	mux.HandleFunc("POST /api/payment-orders", s.write(s.createPaymentOrder))
+	mux.HandleFunc("PATCH /api/payment-orders/{id}", s.write(s.updatePaymentOrder))
+	mux.HandleFunc("DELETE /api/payment-orders/{id}", s.write(s.deletePaymentOrder))
+	mux.HandleFunc("POST /api/bill-imports", s.write(s.importBillTransactions))
+	mux.HandleFunc("DELETE /api/bill-imports/{id}", s.write(s.undoBillImport))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -228,7 +243,7 @@ func decode(r *http.Request, value any) error {
 func writeStoreError(w http.ResponseWriter, err error) {
 	message := err.Error()
 	switch message {
-	case "计划任务不存在", "项目不存在":
+	case "计划任务不存在", "项目不存在", "记账记录不存在", "周期记录不存在", "订单不存在", "导入批次不存在":
 		writeError(w, http.StatusNotFound, "not_found", message)
 	default:
 		writeError(w, http.StatusBadRequest, "invalid_input", message)
