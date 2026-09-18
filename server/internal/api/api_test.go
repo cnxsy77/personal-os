@@ -133,6 +133,43 @@ func TestTaskLifecycleRequiresLocalClientHeader(t *testing.T) {
 	}
 }
 
+func TestErrorsUseTheSharedJSONStructure(t *testing.T) {
+	handler := newTestServer(t)
+	headers := map[string]string{"X-Personal-OS-Client": "local"}
+
+	invalid := request(t, handler, http.MethodPost, "/api/tasks", map[string]any{
+		"title":    " ",
+		"date":     "not-a-date",
+		"category": "work",
+	}, headers)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("invalid status = %d", invalid.Code)
+	}
+	assertErrorShape(t, invalid, "invalid_input")
+
+	forbidden := request(t, handler, http.MethodGet, "/api/state", nil, map[string]string{
+		"Origin": "https://example.com",
+	})
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("forbidden status = %d", forbidden.Code)
+	}
+	assertErrorShape(t, forbidden, "forbidden_origin")
+}
+
+func assertErrorShape(t *testing.T, response *httptest.ResponseRecorder, code string) {
+	t.Helper()
+	var value struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &value); err != nil {
+		t.Fatalf("unmarshal error body: %v", err)
+	}
+	if value.Code != code || value.Message == "" {
+		t.Fatalf("unexpected error body: %+v", value)
+	}
+}
+
 func TestProjectCRUDAndStatus(t *testing.T) {
 	handler := newTestServer(t)
 	headers := map[string]string{"X-Personal-OS-Client": "local"}

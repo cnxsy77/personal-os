@@ -8,6 +8,7 @@
     "dev:server": "cd server && go run ./cmd/personal-os --db data/personal-os.db",
     "dev:local": "bash scripts/dev-local.sh",
     "db:migrate": "cd server && go run ./cmd/personal-os --db data/personal-os.db -migrate-only",
+    "backup": "bash scripts/backup.sh",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",

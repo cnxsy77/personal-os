@@ -18,6 +18,7 @@ import (
 func main() {
 	dbPath := flag.String("db", "data/personal-os.db", "SQLite database path")
 	migrateOnly := flag.Bool("migrate-only", false, "run migrations and exit")
+	backupPath := flag.String("backup", "", "create a SQLite backup at the path and exit")
 	addr := flag.String("addr", "127.0.0.1:8787", "HTTP listen address")
 	flag.Parse()
 
@@ -38,6 +39,13 @@ func main() {
 			absolutePath = *dbPath
 		}
 		log.Printf("database ready: %s", absolutePath)
+		return
+	}
+	if *backupPath != "" {
+		if err := st.Backup(ctx, *backupPath); err != nil {
+			log.Fatalf("backup database: %v", err)
+		}
+		log.Printf("database backup ready: %s", *backupPath)
 		return
 	}
 

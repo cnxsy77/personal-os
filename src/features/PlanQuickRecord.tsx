@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import {
   AlertTriangle,
   CalendarClock,
@@ -78,10 +78,12 @@ export function PlanQuickRecord({
 }: Props) {
   const [now] = useState(() => new Date())
   const today = toDateKey(now)
-  const [date, setDate] = useState(today)
-  const [category, setCategory] = useState<TaskCategory>('work')
-  const [time, setTime] = useState('')
-  const [title, setTitle] = useState('')
+  const [date, setDate] = useState(externalEditingTask?.date ?? today)
+  const [category, setCategory] = useState<TaskCategory>(
+    externalEditingTask?.category ?? 'work',
+  )
+  const [time, setTime] = useState(externalEditingTask?.time ?? '')
+  const [title, setTitle] = useState(externalEditingTask?.title ?? '')
   const [error, setError] = useState('')
   const [range, setRange] = useState<PlanRange>('today')
   const [status, setStatus] = useState<PlanStatusFilter>('active')
@@ -89,22 +91,10 @@ export function PlanQuickRecord({
     'all',
   )
   const [search, setSearch] = useState('')
-  const [editingTaskId, setEditingTaskId] = useState<Task['id'] | null>(null)
+  const [editingTaskId, setEditingTaskId] = useState<Task['id'] | null>(
+    externalEditingTask?.id ?? null,
+  )
   const [deletingTask, setDeletingTask] = useState<Task | null>(null)
-  const externalEditingTaskId = externalEditingTask?.id
-
-  useEffect(() => {
-    if (!dialogOpen || !externalEditingTask) {
-      return
-    }
-
-    setTitle(externalEditingTask.title)
-    setDate(externalEditingTask.date ?? today)
-    setCategory(externalEditingTask.category ?? 'work')
-    setTime(externalEditingTask.time ?? '')
-    setError('')
-    setEditingTaskId(externalEditingTask.id)
-  }, [dialogOpen, externalEditingTask, externalEditingTaskId, today])
 
   const filters = useMemo(() => ({
     range,
