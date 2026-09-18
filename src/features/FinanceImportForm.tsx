@@ -14,7 +14,7 @@ import {
 
 type Props = {
   transactions: Transaction[]
-  onSubmit: (input: BillImportInput) => BillImportResult
+  onSubmit: (input: BillImportInput) => BillImportResult | Promise<BillImportResult>
 }
 
 const sourceLabels = {
@@ -60,7 +60,7 @@ export function FinanceImportForm({ transactions, onSubmit }: Props) {
     )
   }
 
-  function importSelected() {
+  async function importSelected() {
     if (!preview) {
       return
     }
@@ -72,7 +72,7 @@ export function FinanceImportForm({ transactions, onSubmit }: Props) {
     }
 
     try {
-      const result = onSubmit({
+      const result = await onSubmit({
         source: preview.source,
         fileName: preview.fileName,
         transactions: selectedRows.map((row) => ({

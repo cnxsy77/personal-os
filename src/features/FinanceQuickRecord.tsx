@@ -64,7 +64,9 @@ type Props = {
     input: { name: string; expectedTotalCents: number },
   ) => void
   onPaymentOrderDelete: (id: string) => void
-  onImportSubmit: (input: BillImportInput) => BillImportResult
+  onImportSubmit: (
+    input: BillImportInput,
+  ) => BillImportResult | Promise<BillImportResult>
   onImportUndo: (importId: string) => void
   expenseCategories: string[]
   incomeCategories: string[]
@@ -148,7 +150,7 @@ export function FinanceQuickRecord({
     onDialogClose()
   }
 
-  function submitBudget(event: FormEvent) {
+  async function submitBudget(event: FormEvent) {
     event.preventDefault()
     const cents = Math.round(Number(budgetDraft) * 100)
 
@@ -157,21 +159,21 @@ export function FinanceQuickRecord({
       return
     }
 
-    onBudgetSubmit(cents)
+    await onBudgetSubmit(cents)
     setBudgetDraft(String(cents / 100))
     setBudgetError('')
     closeDialog()
     onSaved('预算已更新')
   }
 
-  function handleTransactionSubmit(
+  async function handleTransactionSubmit(
     input: TransactionInput,
     transactionId?: string,
   ) {
     if (transactionId) {
-      onTransactionUpdate(transactionId, input)
+      await onTransactionUpdate(transactionId, input)
     } else {
-      onSubmit(input)
+      await onSubmit(input)
     }
     closeDialog()
     onSaved(
@@ -183,21 +185,21 @@ export function FinanceQuickRecord({
     )
   }
 
-  function handleRecurringSubmit(
+  async function handleRecurringSubmit(
     input: RecurringTransactionInput,
     recurringId?: string,
   ) {
     if (recurringId) {
-      onRecurringSubmit({ ...input, id: recurringId })
+      await onRecurringSubmit({ ...input, id: recurringId })
     } else {
-      onRecurringSubmit(input)
+      await onRecurringSubmit(input)
     }
     closeDialog()
     onSaved(recurringId ? '周期记录已更新' : '周期记录已保存')
   }
 
-  function handleImportSubmit(input: BillImportInput) {
-    const result = onImportSubmit(input)
+  async function handleImportSubmit(input: BillImportInput) {
+    const result = await onImportSubmit(input)
     if (result.importedCount > 0) {
       closeDialog()
       onSaved(`已导入 ${result.importedCount} 笔账单`)

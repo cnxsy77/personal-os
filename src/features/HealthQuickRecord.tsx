@@ -395,7 +395,7 @@ export function HealthQuickRecord({
     onDialogClose()
   }
 
-  function submitWorkout(event: FormEvent) {
+  async function submitWorkout(event: FormEvent) {
     event.preventDefault()
     const workoutInput = buildWorkoutInput()
     const normalizedDuration = Number(duration)
@@ -418,10 +418,10 @@ export function HealthQuickRecord({
     let savedMessage = '训练已保存'
 
     if (editingWorkout) {
-      onWorkoutUpdate(editingWorkout.id, workoutInput)
+      await onWorkoutUpdate(editingWorkout.id, workoutInput)
       savedMessage = '训练已更新'
     } else {
-      onWorkoutSubmit(workoutInput)
+      await onWorkoutSubmit(workoutInput)
     }
 
     setPlanText('')
@@ -440,7 +440,7 @@ export function HealthQuickRecord({
     onSaved(savedMessage)
   }
 
-  function submitMetric(event: FormEvent) {
+  async function submitMetric(event: FormEvent) {
     event.preventDefault()
     const normalizedSleepHours = Number(sleepHours)
     const normalizedWeight = weight === '' ? null : Number(weight)
@@ -474,9 +474,9 @@ export function HealthQuickRecord({
     }
 
     if (editingMetric) {
-      onMetricUpdate(editingMetric.id, metricInput)
+      await onMetricUpdate(editingMetric.id, metricInput)
     } else {
-      onMetricSubmit(metricInput)
+      await onMetricSubmit(metricInput)
     }
     setSleepHours('')
     setWeight('')

@@ -9,7 +9,7 @@ import {
   Target,
   Wallet,
 } from 'lucide-react'
-import { createLocalPersonalOSData } from './data/localPersonalOSData'
+import { createRemotePersonalOSData } from './data/remotePersonalOSData'
 import type { PersonalOSData, Task } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
 import { RecordDialog } from './components/RecordDialog'
@@ -49,7 +49,7 @@ const domainChoices = [
   [FolderGit2, 'workbench', '工作台', 'project'],
 ] as const
 
-const defaultData = createLocalPersonalOSData()
+const defaultData = createRemotePersonalOSData()
 
 type QuickRecordDomain = 'plan' | 'health' | 'finance' | 'learning' | 'workbench'
 
@@ -128,6 +128,20 @@ export default function App({ data = defaultData }: AppProps) {
   useEffect(() => {
     return () => window.clearTimeout(toastTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    function handleDataError(event: Event) {
+      const message =
+        event instanceof CustomEvent && typeof event.detail === 'string'
+          ? event.detail
+          : '操作失败'
+      showSavedToast(message)
+    }
+
+    window.addEventListener('personal-os:data-error', handleDataError)
+    return () =>
+      window.removeEventListener('personal-os:data-error', handleDataError)
+  }, [showSavedToast])
 
   return (
     <main className="app">

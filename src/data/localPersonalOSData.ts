@@ -70,7 +70,11 @@ const taskCategoryLabels: Record<TaskCategory, string> = {
   life: '生活',
 }
 
-type LocalDataOptions = {
+export type LocalPersonalOSData = PersonalOSData & {
+  replaceState: (state: PersonalOSState) => void
+}
+
+export type LocalDataOptions = {
   storage?: Storage
   now?: () => Date
   seed?: PersonalOSState
@@ -78,7 +82,7 @@ type LocalDataOptions = {
 
 export function createLocalPersonalOSData(
   options: LocalDataOptions = {},
-): PersonalOSData {
+): LocalPersonalOSData {
   const storage = options.storage ?? window.localStorage
   const now = options.now ?? (() => new Date())
   const listeners = new Set<() => void>()
@@ -1960,6 +1964,12 @@ export function createLocalPersonalOSData(
   return {
     subscribe,
     getSnapshot,
+    replaceState(nextState: PersonalOSState) {
+      state = nextState
+      snapshot = nextState
+      storage.setItem(storageKey, JSON.stringify(nextState))
+      listeners.forEach((listener) => listener())
+    },
     toggleTask,
     addTask,
     updateTask,

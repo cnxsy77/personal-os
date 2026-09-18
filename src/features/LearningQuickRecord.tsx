@@ -290,7 +290,7 @@ export function LearningQuickRecord({
     onDialogClose()
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     const normalizedTopic = topic.trim()
     const normalizedMinutes = Number(minutes)
@@ -329,9 +329,9 @@ export function LearningQuickRecord({
     }
 
     if (editingStudyLog) {
-      onStudyUpdate(editingStudyLog.id, studyInput)
+      await onStudyUpdate(editingStudyLog.id, studyInput)
     } else {
-      onSubmit(studyInput)
+      await onSubmit(studyInput)
     }
     setTopic('')
     setMinutes('')
@@ -350,7 +350,7 @@ export function LearningQuickRecord({
     }
   }
 
-  function submitResource(event: FormEvent) {
+  async function submitResource(event: FormEvent) {
     event.preventDefault()
     const normalizedTitle = resourceTitle.trim()
     const targetMinutes = Number(resourceTargetMinutes)
@@ -381,9 +381,9 @@ export function LearningQuickRecord({
     }
 
     if (editingResource) {
-      onResourceUpdate(editingResource.id, resourceInput)
+      await onResourceUpdate(editingResource.id, resourceInput)
     } else {
-      onResourceSubmit(resourceInput)
+      await onResourceSubmit(resourceInput)
     }
     setResourceTitle('')
     setResourceSourceUrl('')
@@ -395,7 +395,7 @@ export function LearningQuickRecord({
     onSaved(editingResource ? '课程已更新' : '课程已保存')
   }
 
-  function submitLessons(event: FormEvent) {
+  async function submitLessons(event: FormEvent) {
     event.preventDefault()
 
     if (editingLesson) {
@@ -407,7 +407,7 @@ export function LearningQuickRecord({
         return
       }
 
-      onLessonUpdate(editingLesson.id, {
+      await onLessonUpdate(editingLesson.id, {
         title: normalizedTitle,
         status: lessonStatus,
         ...(lessonExpectedMinutes ? { expectedMinutes } : {}),
@@ -436,14 +436,14 @@ export function LearningQuickRecord({
       return
     }
 
-    onLessonsSubmit(lessonResourceId, lessons)
+    await onLessonsSubmit(lessonResourceId, lessons)
     setLessonBatch('')
     setLessonError('')
     closeDialog()
     onSaved('课时目录已保存')
   }
 
-  function submitFolder() {
+  async function submitFolder() {
     const name = newFolderName.trim()
 
     if (!name) {
@@ -452,16 +452,16 @@ export function LearningQuickRecord({
     }
 
     if (editingFolder) {
-      onNoteFolderUpdate(editingFolder.id, name)
+      await onNoteFolderUpdate(editingFolder.id, name)
     } else {
-      onNoteFolderSubmit(name)
+      await onNoteFolderSubmit(name)
     }
     setNewFolderName('')
     setEditingFolder(null)
     onSaved(editingFolder ? '笔记文件夹已更新' : '笔记文件夹已创建')
   }
 
-  function submitNote(event: FormEvent) {
+  async function submitNote(event: FormEvent) {
     event.preventDefault()
     const title = noteTitle.trim()
     const content = noteContent.trim()
@@ -476,7 +476,7 @@ export function LearningQuickRecord({
       return
     }
 
-    onNoteSubmit({
+    await onNoteSubmit({
       ...(editingNoteId ? { id: editingNoteId } : {}),
       folderId: noteFolderId === 'none' ? null : noteFolderId,
       title,
@@ -506,7 +506,7 @@ export function LearningQuickRecord({
     openDialog('path')
   }
 
-  function submitPath(event: FormEvent) {
+  async function submitPath(event: FormEvent) {
     event.preventDefault()
     const title = pathTitle.trim()
     const targetMinutes = Number(pathTargetMinutes)
@@ -522,9 +522,9 @@ export function LearningQuickRecord({
     }
 
     if (editingPath) {
-      onPathUpdate(editingPath.id, { title, targetMinutes })
+      await onPathUpdate(editingPath.id, { title, targetMinutes })
     } else {
-      onPathSubmit({ title, targetMinutes })
+      await onPathSubmit({ title, targetMinutes })
     }
 
     setPathTitle('')
@@ -596,7 +596,7 @@ export function LearningQuickRecord({
     setDeleteRequest(input)
   }
 
-  function submitReview(event: FormEvent) {
+  async function submitReview(event: FormEvent) {
     event.preventDefault()
     const normalizedWins = reviewWins.trim()
     const normalizedBlockers = reviewBlockers.trim()
@@ -620,9 +620,9 @@ export function LearningQuickRecord({
     }
 
     if (editingReview) {
-      onReviewUpdate(editingReview.id, reviewInput)
+      await onReviewUpdate(editingReview.id, reviewInput)
     } else {
-      onReviewSubmit(reviewInput)
+      await onReviewSubmit(reviewInput)
     }
 
     setReviewWins('')

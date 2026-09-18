@@ -368,7 +368,7 @@ export type PersonalOSData = {
     input: { name: string; expectedTotalCents: number },
   ) => void
   deletePaymentOrder: (id: string) => void
-  importBillTransactions: (input: BillImportInput) => BillImportResult
+  importBillTransactions: (input: BillImportInput) => BillImportResult | Promise<BillImportResult>
   undoBillImport: (importId: string) => void
   recordStudyLog: (input: StudyLogInput) => void
   updateStudyLog: (id: string, input: StudyLogUpdateInput) => void

@@ -150,7 +150,7 @@ export function PlanQuickRecord({
     onDialogClose()
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     const normalizedTitle = title.trim()
 
@@ -172,9 +172,9 @@ export function PlanQuickRecord({
     }
 
     if (editingTaskId) {
-      onTaskUpdate(editingTaskId, taskInput)
+      await onTaskUpdate(editingTaskId, taskInput)
     } else {
-      onTaskSubmit(taskInput)
+      await onTaskSubmit(taskInput)
     }
     setError('')
     setRange(date === today ? 'today' : 'all')

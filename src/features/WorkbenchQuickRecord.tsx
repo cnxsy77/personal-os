@@ -133,7 +133,7 @@ export function WorkbenchQuickRecord({
     onDialogClose()
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
 
     if (!name.trim()) {
@@ -160,9 +160,9 @@ export function WorkbenchQuickRecord({
     }
 
     if (editingProjectId) {
-      onProjectUpdate(editingProjectId, projectInput)
+      await onProjectUpdate(editingProjectId, projectInput)
     } else {
-      onProjectSubmit(projectInput)
+      await onProjectSubmit(projectInput)
     }
     setName('')
     setGoal('')

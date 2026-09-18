@@ -57,7 +57,7 @@ export function FinanceTransactionForm({
     setCategory(nextKind === 'expense' ? '餐饮' : nextKind === 'income' ? '工资' : '转账')
   }
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     const cents = Math.round(Number(amount) * 100)
 
@@ -109,7 +109,7 @@ export function FinanceTransactionForm({
           ? { orderId: selectedOrderId, stage }
           : {}),
       }
-      onSubmit(input, editingTransaction?.id)
+      await onSubmit(input, editingTransaction?.id)
       setAmount('')
       setNote('')
       setError('')

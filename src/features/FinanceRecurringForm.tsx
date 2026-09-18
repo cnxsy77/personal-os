@@ -33,7 +33,7 @@ export function FinanceRecurringForm({
     ? category
     : categories[0] ?? ''
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     const amountCents = Math.round(Number(amount) * 100)
 
@@ -57,7 +57,7 @@ export function FinanceRecurringForm({
         nextDate,
         ...(note.trim() ? { note: note.trim() } : {}),
       }
-      onSubmit(input, editingRecurring?.id)
+      await onSubmit(input, editingRecurring?.id)
       setName('')
       setAmount('')
       setNote('')
