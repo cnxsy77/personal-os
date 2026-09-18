@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   BookOpen,
   Check,
@@ -6,12 +6,21 @@ import {
   Dumbbell,
   FolderGit2,
   Pencil,
+  Sparkles,
   Target,
   Trash2,
   Wallet,
 } from 'lucide-react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import type { PersonalOSState, Task } from '../data/model'
+import type {
+  AIPublicConfig,
+  AISummary,
+  AISummaryPeriod,
+  AISummaryScope,
+  PersonalOSData,
+  PersonalOSState,
+  Task,
+} from '../data/model'
 import {
   getCompletedWorkoutsThisWeek,
   workoutKindLabels,
@@ -23,6 +32,7 @@ import {
   getStudyMinutesOnDate,
   toDateKey,
 } from '../utils/study'
+import { getISOWeekKey } from '../utils/isoWeek'
 import './OverviewConsole.css'
 
 type RecordFilter = 'all' | 'task' | 'workout' | 'finance' | 'learning' | 'project'
@@ -45,6 +55,7 @@ type Decision = {
 }
 
 type OverviewConsoleProps = {
+  data: PersonalOSData
   state: PersonalOSState
   onTaskToggle: (id: string) => void
   onTaskEdit?: (task: Task) => void
@@ -62,6 +73,20 @@ const filterLabels: Record<RecordFilter, string> = {
 
 const filters = Object.entries(filterLabels) as Array<[RecordFilter, string]>
 
+const aiPeriodLabels: Record<AISummaryPeriod, string> = {
+  daily: '日',
+  weekly: '周',
+  monthly: '月',
+}
+
+const aiScopeLabels: Record<AISummaryScope, string> = {
+  all: '全部',
+  health: '锻炼',
+  finance: '记账',
+  learning: '学习',
+  workbench: '工作台',
+}
+
 const domainNames: Record<OverviewRecord['domain'], string> = {
   task: '计划',
   workout: '锻炼',
@@ -71,6 +96,7 @@ const domainNames: Record<OverviewRecord['domain'], string> = {
 }
 
 export function OverviewConsole({
+  data,
   state,
   onTaskToggle,
   onTaskEdit,
@@ -306,6 +332,8 @@ export function OverviewConsole({
             </div>
           </section>
 
+          <AISummaryPanel data={data} summaries={state.aiSummaries} />
+
           <section className="overview-panel decision-panel" aria-labelledby="decision-title">
             <header className="overview-panel-heading">
               <h2 id="decision-title">需要决策</h2>
@@ -347,6 +375,124 @@ export function OverviewConsole({
       />
     </div>
   )
+}
+
+function AISummaryPanel({
+  data,
+  summaries,
+}: {
+  data: PersonalOSData
+  summaries: AISummary[]
+}) {
+  const [period, setPeriod] = useState<AISummaryPeriod>('daily')
+  const [scope, setScope] = useState<AISummaryScope>('all')
+  const [config, setConfig] = useState<AIPublicConfig | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    data.getAIConfig().then((value) => {
+      if (active) {
+        setConfig(value)
+      }
+    }).catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [data])
+
+  const periodKey = getPeriodKey(period)
+  const summary = summaries.find(
+    (item) => item.period === period && item.scope === scope && item.periodKey === periodKey,
+  )
+
+  async function generate() {
+    setBusy(true)
+    setError('')
+    try {
+      await data.generateAISummary({ period, scope })
+    } catch (cause: unknown) {
+      setError(cause instanceof Error ? cause.message : 'AI 总结生成失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="overview-panel ai-overview-panel" aria-labelledby="overview-ai-title">
+      <header className="overview-panel-heading">
+        <h2 id="overview-ai-title">
+          <Sparkles size={17} />
+          AI 总结
+        </h2>
+        <span>{config?.configured ? config.model : '未配置'}</span>
+      </header>
+
+      <div className="overview-filters ai-overview-filters" role="group" aria-label="AI 总结周期">
+        {(Object.entries(aiPeriodLabels) as Array<[AISummaryPeriod, string]>).map(([value, label]) => (
+          <button
+            aria-label={`选择${label}总结`}
+            aria-pressed={period === value}
+            className={period === value ? 'selected' : ''}
+            key={value}
+            onClick={() => setPeriod(value)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="ai-overview-controls">
+        <select
+          aria-label="AI 总结范围"
+          disabled={busy}
+          onChange={(event) => setScope(event.target.value as AISummaryScope)}
+          value={scope}
+        >
+          {(Object.entries(aiScopeLabels) as Array<[AISummaryScope, string]>).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <button disabled={busy || !config?.configured} onClick={() => void generate()} type="button">
+          刷新
+        </button>
+      </div>
+
+      {summary ? (
+        <div className="ai-overview-content">
+          <b>{summary.title}</b>
+          <span>
+            {formatGeneratedAt(summary.generatedAt)} · {summary.totalTokens} tokens
+          </span>
+          <pre>{summary.content}</pre>
+        </div>
+      ) : (
+        <p className="overview-empty">当前周期还没有 AI 总结。</p>
+      )}
+      {error ? <p className="ai-overview-error" role="alert">{error}</p> : null}
+    </section>
+  )
+}
+
+function getPeriodKey(period: AISummaryPeriod) {
+  const now = new Date()
+  if (period === 'daily') {
+    return toDateKey(now)
+  }
+  if (period === 'monthly') {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }
+  return getISOWeekKey(now)
+}
+
+function formatGeneratedAt(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
 }
 
 function Kpi({ label, value, note }: { label: string; value: string; note: string }) {

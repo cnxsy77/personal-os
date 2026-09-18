@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Plus,
   Settings,
+  Sparkles,
   Target,
   Wallet,
 } from 'lucide-react'
@@ -14,6 +15,7 @@ import type { PersonalOSData, Task } from './data/model'
 import { usePersonalOSData } from './data/usePersonalOSData'
 import { RecordDialog } from './components/RecordDialog'
 import { SettingsDrawer } from './components/SettingsDrawer'
+import { AIDrawer } from './components/AIDrawer'
 import { Toast } from './components/Toast'
 import { FinanceQuickRecord } from './features/FinanceQuickRecord'
 import { HealthQuickRecord } from './features/HealthQuickRecord'
@@ -77,6 +79,7 @@ export default function App({ data = defaultData }: AppProps) {
   const [quickRecord, setQuickRecord] = useState<QuickRecordTarget | null>(null)
   const [domainPickerOpen, setDomainPickerOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [aiOpen, setAIOpen] = useState(false)
   const [overviewEditingTask, setOverviewEditingTask] = useState<Task | null>(
     null,
   )
@@ -114,6 +117,7 @@ export default function App({ data = defaultData }: AppProps) {
     setQuickRecord(null)
     setDomainPickerOpen(false)
     setSettingsOpen(false)
+    setAIOpen(false)
     setOverviewEditingTask(null)
     setMobileOpen(false)
   }
@@ -183,6 +187,14 @@ export default function App({ data = defaultData }: AppProps) {
             </h1>
           </div>
           <div className="header-actions">
+            <button
+              aria-label="AI 助手"
+              className="icon-action"
+              onClick={() => setAIOpen(true)}
+              type="button"
+            >
+              <Sparkles size={17} />
+            </button>
             <button
               aria-label="设置"
               className="icon-action"
@@ -324,6 +336,7 @@ export default function App({ data = defaultData }: AppProps) {
           />
         ) : (
           <OverviewConsole
+            data={data}
             state={state}
             onTaskToggle={data.toggleTask}
             onTaskEdit={(task) => {
@@ -486,6 +499,15 @@ export default function App({ data = defaultData }: AppProps) {
             onSettingsChange={data.updateSettings}
             open
             settings={state.settings}
+          />
+        ) : null}
+
+        {aiOpen ? (
+          <AIDrawer
+            data={data}
+            onClose={() => setAIOpen(false)}
+            open
+            summaries={state.aiSummaries}
           />
         ) : null}
 

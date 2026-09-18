@@ -28,6 +28,7 @@ const remoteState: PersonalOSState = {
   paymentOrders: [],
   recurringTransactions: [],
   billImports: [],
+  aiSummaries: [],
   settings: {
     weeklyWorkoutTarget: 4,
     expenseCategories: ['餐饮'],

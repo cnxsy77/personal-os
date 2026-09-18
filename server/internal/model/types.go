@@ -60,6 +60,50 @@ type RenameCategoryInput struct {
 	To   string `json:"to"`
 }
 
+type AISummaryPeriod string
+
+type AISummaryScope string
+
+type AISummary struct {
+	ID               string  `json:"id"`
+	Period           string  `json:"period"`
+	Scope            string  `json:"scope"`
+	PeriodKey        string  `json:"periodKey"`
+	Title            string  `json:"title"`
+	Content          string  `json:"content"`
+	Model            string  `json:"model"`
+	PromptTokens     int     `json:"promptTokens"`
+	CompletionTokens int     `json:"completionTokens"`
+	TotalTokens      int     `json:"totalTokens"`
+	FilePath         *string `json:"filePath,omitempty"`
+	GeneratedAt      string  `json:"generatedAt"`
+	CreatedAt        string  `json:"createdAt"`
+}
+
+type AISummaryInput struct {
+	Period string `json:"period"`
+	Scope  string `json:"scope"`
+}
+
+type AISummaryUpdateInput struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+type AIChatInput struct {
+	Question  string `json:"question"`
+	SummaryID string `json:"summaryId,omitempty"`
+	Scope     string `json:"scope,omitempty"`
+}
+
+type AIChatResult struct {
+	Answer           string `json:"answer"`
+	Model            string `json:"model"`
+	PromptTokens     int    `json:"promptTokens"`
+	CompletionTokens int    `json:"completionTokens"`
+	TotalTokens      int    `json:"totalTokens"`
+}
+
 type TransactionKind string
 type TransactionTag string
 type PaymentStage string
@@ -386,5 +430,6 @@ type State struct {
 	PaymentOrders         []PaymentOrder     `json:"paymentOrders"`
 	RecurringTransactions []Recurring        `json:"recurringTransactions"`
 	BillImports           []BillImport       `json:"billImports"`
+	AISummaries           []AISummary        `json:"aiSummaries"`
 	Settings              Settings           `json:"settings"`
 }

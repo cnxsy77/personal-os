@@ -1,4 +1,10 @@
 import type {
+  AIChatInput,
+  AIChatResult,
+  AIPublicConfig,
+  AISummary,
+  AISummaryInput,
+  AISummaryUpdateInput,
   HealthCondition,
   HealthMetric,
   HealthMetricInput,
@@ -1910,6 +1916,88 @@ export function createLocalPersonalOSData(
     commit({ ...state, settings: nextSettings })
   }
 
+  function validateAISummarySelection(input: AISummaryInput): AISummaryInput {
+    if (
+      input.period !== 'daily' &&
+      input.period !== 'weekly' &&
+      input.period !== 'monthly'
+    ) {
+      throw new Error('请选择有效的 AI 总结周期')
+    }
+
+    if (
+      input.scope !== 'all' &&
+      input.scope !== 'health' &&
+      input.scope !== 'finance' &&
+      input.scope !== 'learning' &&
+      input.scope !== 'workbench'
+    ) {
+      throw new Error('请选择有效的 AI 总结范围')
+    }
+
+    return input
+  }
+
+  async function getAIConfig(): Promise<AIPublicConfig> {
+    throw new Error('本地应急模式未接入 AI 服务')
+  }
+
+  async function generateAISummary(input: AISummaryInput): Promise<AISummary> {
+    validateAISummarySelection(input)
+    throw new Error('本地应急模式不支持生成 AI 总结')
+  }
+
+  async function updateAISummary(
+    id: string,
+    input: AISummaryUpdateInput,
+  ): Promise<AISummary> {
+    const title = input.title.trim()
+    const content = input.content.trim()
+
+    if (!title) {
+      throw new Error('总结标题不能为空')
+    }
+    if (!content) {
+      throw new Error('总结内容不能为空')
+    }
+
+    const existing = state.aiSummaries.find((item) => item.id === id)
+    if (!existing) {
+      throw new Error('AI 总结不存在')
+    }
+
+    const updated: AISummary = { ...existing, title, content }
+    commit({
+      ...state,
+      aiSummaries: state.aiSummaries.map((item) =>
+        item.id === id ? updated : item,
+      ),
+    })
+    return updated
+  }
+
+  async function deleteAISummary(id: string) {
+    if (!state.aiSummaries.some((item) => item.id === id)) {
+      throw new Error('AI 总结不存在')
+    }
+
+    commit({
+      ...state,
+      aiSummaries: state.aiSummaries.filter((item) => item.id !== id),
+    })
+  }
+
+  async function exportAISummary(): Promise<AISummary> {
+    throw new Error('本地应急模式不支持导出 AI 总结')
+  }
+
+  async function sendAIChat(input: AIChatInput): Promise<AIChatResult> {
+    if (!input.question.trim()) {
+      throw new Error('请输入追问内容')
+    }
+    throw new Error('本地应急模式不支持 AI 追问')
+  }
+
   function renameCategory(kind: SettingsCategoryKind, from: string, to: string) {
     const nextName = to.trim()
     const currentName = from.trim()
@@ -2022,6 +2110,12 @@ export function createLocalPersonalOSData(
     deleteHealthMetric,
     updateSettings,
     renameCategory,
+    getAIConfig,
+    generateAISummary,
+    updateAISummary,
+    deleteAISummary,
+    exportAISummary,
+    sendAIChat,
   }
 }
 
@@ -2110,6 +2204,7 @@ function createSeedState(now: Date): PersonalOSState {
     paymentOrders: [],
     recurringTransactions: [],
     billImports: [],
+    aiSummaries: [],
     settings: defaultPersonalOSSettings,
   }
 }
@@ -2186,8 +2281,38 @@ function normalizeState(value: unknown, fallback: PersonalOSState): PersonalOSSt
     billImports: Array.isArray(value.billImports)
       ? value.billImports.filter(isBillImport)
       : [],
+    aiSummaries: Array.isArray(value.aiSummaries)
+      ? value.aiSummaries.filter(isAISummary)
+      : [],
     settings: normalizeSettings(value.settings, fallback.settings),
   }
+}
+
+function isAISummary(value: unknown): value is AISummary {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    (value.period === 'daily' ||
+      value.period === 'weekly' ||
+      value.period === 'monthly') &&
+    (value.scope === 'all' ||
+      value.scope === 'health' ||
+      value.scope === 'finance' ||
+      value.scope === 'learning' ||
+      value.scope === 'workbench') &&
+    typeof value.periodKey === 'string' &&
+    typeof value.title === 'string' &&
+    typeof value.content === 'string' &&
+    typeof value.model === 'string' &&
+    typeof value.promptTokens === 'number' &&
+    typeof value.completionTokens === 'number' &&
+    typeof value.totalTokens === 'number' &&
+    typeof value.generatedAt === 'string' &&
+    typeof value.createdAt === 'string'
+  )
 }
 
 function normalizeSettings(

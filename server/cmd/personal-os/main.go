@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"personal-os/server/internal/api"
+	"personal-os/server/internal/ai"
 	"personal-os/server/internal/store"
 )
 
@@ -49,9 +50,18 @@ func main() {
 		return
 	}
 
+	aiConfig, err := ai.LoadConfig(".env")
+	if err != nil {
+		log.Fatalf("load AI config: %v", err)
+	}
+
 	server := &http.Server{
 		Addr:              *addr,
-		Handler:           api.New(st).Handler(),
+		Handler: api.New(
+			st,
+			api.WithAIClient(ai.NewClient(aiConfig)),
+			api.WithReportsDir("reports/ai-summaries"),
+		).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {

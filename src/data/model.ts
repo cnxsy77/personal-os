@@ -139,6 +139,63 @@ export type PersonalOSSettings = {
 
 export type PersonalOSSettingsInput = Partial<PersonalOSSettings>
 
+export type AISummaryPeriod = 'daily' | 'weekly' | 'monthly'
+
+export type AISummaryScope =
+  | 'all'
+  | 'health'
+  | 'finance'
+  | 'learning'
+  | 'workbench'
+
+export type AISummary = {
+  id: string
+  period: AISummaryPeriod
+  scope: AISummaryScope
+  periodKey: string
+  title: string
+  content: string
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  filePath?: string
+  generatedAt: string
+  createdAt: string
+}
+
+export type AISummaryInput = {
+  period: AISummaryPeriod
+  scope: AISummaryScope
+}
+
+export type AISummaryUpdateInput = {
+  title: string
+  content: string
+}
+
+export type AIChatInput = {
+  question: string
+  summaryId?: string
+  scope?: AISummaryScope
+}
+
+export type AIChatResult = {
+  answer: string
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+export type AIPublicConfig = {
+  configured: boolean
+  baseUrl: string
+  model: string
+  maxOutputTokens: number
+  timeoutSeconds: number
+}
+
 export type StudyLog = {
   id: string
   topic: string
@@ -345,6 +402,7 @@ export type PersonalOSState = {
   paymentOrders: PaymentOrder[]
   recurringTransactions: RecurringTransaction[]
   billImports: BillImport[]
+  aiSummaries: AISummary[]
   settings: PersonalOSSettings
 }
 
@@ -419,4 +477,13 @@ export type PersonalOSData = {
     from: string,
     to: string,
   ) => void
+  getAIConfig: () => Promise<AIPublicConfig>
+  generateAISummary: (input: AISummaryInput) => Promise<AISummary>
+  updateAISummary: (
+    id: string,
+    input: AISummaryUpdateInput,
+  ) => Promise<AISummary>
+  deleteAISummary: (id: string) => Promise<void>
+  exportAISummary: (id: string) => Promise<AISummary>
+  sendAIChat: (input: AIChatInput) => Promise<AIChatResult>
 }

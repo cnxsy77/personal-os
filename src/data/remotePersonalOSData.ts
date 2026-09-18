@@ -1,6 +1,12 @@
 import { createLocalPersonalOSData } from './localPersonalOSData'
 import { defaultPersonalOSSettings } from '../utils/settings'
 import type {
+  AIChatInput,
+  AIChatResult,
+  AIPublicConfig,
+  AISummary,
+  AISummaryInput,
+  AISummaryUpdateInput,
   BillImportInput,
   BillImportResult,
   HealthMetricInput,
@@ -59,7 +65,13 @@ const emptyState: PersonalOSState = {
   paymentOrders: [],
   recurringTransactions: [],
   billImports: [],
+  aiSummaries: [],
   settings: defaultPersonalOSSettings,
+}
+
+type AISummaryResponse = {
+  summary: AISummary
+  state: PersonalOSState
 }
 
 export function createRemotePersonalOSData(
@@ -181,6 +193,118 @@ export function createRemotePersonalOSData(
       throw await createApiError(response)
     }
     mirror.replaceState((await response.json()) as PersonalOSState)
+  }
+
+  async function aiRequest<T>(
+    path: string,
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    body?: unknown,
+  ): Promise<T> {
+    let response: Response
+    try {
+      response = await doFetch(`${baseUrl}${path}`, {
+        method,
+        headers: {
+          ...(body === undefined
+            ? {}
+            : { 'Content-Type': 'application/json' }),
+          'X-Personal-OS-Client': 'local',
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      })
+    } catch (error: unknown) {
+      throw createError(error, '无法连接本机 AI 服务')
+    }
+
+    if (!response.ok) {
+      throw await createApiError(response)
+    }
+
+    return (await response.json()) as T
+  }
+
+  async function generateAISummary(input: AISummaryInput) {
+    const previous = mirror.getSnapshot()
+
+    try {
+      const result = await aiRequest<AISummaryResponse>(
+        '/ai/summaries',
+        'POST',
+        input,
+      )
+      mirror.replaceState(result.state)
+      return result.summary
+    } catch (error: unknown) {
+      if (mirror.getSnapshot() !== previous) {
+        mirror.replaceState(previous)
+      }
+      notify(createError(error, 'AI 总结生成失败'))
+      throw error
+    }
+  }
+
+  async function updateAISummary(id: string, input: AISummaryUpdateInput) {
+    const previous = mirror.getSnapshot()
+
+    try {
+      await mirror.updateAISummary(id, input)
+      const result = await aiRequest<AISummaryResponse>(
+        `/ai/summaries/${encodeURIComponent(id)}`,
+        'PATCH',
+        input,
+      )
+      mirror.replaceState(result.state)
+      return result.summary
+    } catch (error: unknown) {
+      if (mirror.getSnapshot() !== previous) {
+        mirror.replaceState(previous)
+      }
+      notify(createError(error, 'AI 总结保存失败'))
+      throw error
+    }
+  }
+
+  async function deleteAISummary(id: string) {
+    const previous = mirror.getSnapshot()
+
+    try {
+      await mirror.deleteAISummary(id)
+      const state = await aiRequest<PersonalOSState>(
+        `/ai/summaries/${encodeURIComponent(id)}`,
+        'DELETE',
+      )
+      mirror.replaceState(state)
+    } catch (error: unknown) {
+      if (mirror.getSnapshot() !== previous) {
+        mirror.replaceState(previous)
+      }
+      notify(createError(error, 'AI 总结删除失败'))
+      throw error
+    }
+  }
+
+  async function exportAISummary(id: string) {
+    const previous = mirror.getSnapshot()
+
+    try {
+      const result = await aiRequest<AISummaryResponse>(
+        `/ai/summaries/${encodeURIComponent(id)}/export`,
+        'POST',
+      )
+      mirror.replaceState(result.state)
+      return result.summary
+    } catch (error: unknown) {
+      if (mirror.getSnapshot() !== previous) {
+        mirror.replaceState(previous)
+      }
+      notify(createError(error, 'AI 总结导出失败'))
+      throw error
+    }
+  }
+
+  async function sendAIChat(input: AIChatInput): Promise<AIChatResult> {
+    const result = await aiRequest<AIChatResult>('/ai/chat', 'POST', input)
+    return result
   }
 
   function importMutation(input: BillImportInput) {
@@ -604,5 +728,11 @@ export function createRemotePersonalOSData(
           body: { kind, from, to },
         }),
       ),
+    getAIConfig: () => aiRequest<AIPublicConfig>('/ai/config', 'GET'),
+    generateAISummary,
+    updateAISummary,
+    deleteAISummary,
+    exportAISummary,
+    sendAIChat,
   }
 }

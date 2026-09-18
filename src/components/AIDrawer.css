@@ -1,0 +1,267 @@
+.ai-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(11, 15, 12, 0.68);
+  backdrop-filter: blur(5px);
+}
+
+.ai-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  border-left: 1px solid #3c4c41;
+  background: #171f1a;
+  box-shadow: -22px 0 70px rgba(0, 0, 0, 0.36);
+}
+
+.ai-drawer:focus {
+  outline: none;
+}
+
+.ai-body {
+  gap: 22px;
+}
+
+.ai-grow {
+  width: 100%;
+}
+
+.ai-selector-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.ai-selector-row + .ai-selector-row {
+  margin-top: 10px;
+}
+
+.ai-selector-row select {
+  width: 100%;
+  min-height: 47px;
+  padding: 0 12px;
+  border: 1px solid #3d4b41;
+  border-radius: 10px;
+  background: #111713;
+  color: #eaf0ea;
+  font: inherit;
+}
+
+.ai-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 47px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #d8fa71;
+  color: #182118;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-summary-current {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #2b382f;
+  border-radius: 12px;
+  background: #19201c;
+}
+
+.ai-summary-current header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #93a095;
+}
+
+.ai-summary-current b {
+  color: #eaf0ea;
+  overflow-wrap: anywhere;
+}
+
+.ai-content {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-content h4 {
+  margin: 0;
+  color: #d8fa71;
+  font-size: 16px;
+}
+
+.ai-content p {
+  margin: 4px 0 0;
+  color: #cfd8cf;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ai-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-summary-actions button,
+.ai-history-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #465750;
+  border-radius: 8px;
+  background: transparent;
+  color: #d5ded5;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ai-summary-actions .danger {
+  color: #ff9a8b;
+}
+
+.ai-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-edit-form input,
+.ai-edit-form textarea,
+.ai-question-row input {
+  width: 100%;
+  min-height: 47px;
+  padding: 10px 12px;
+  border: 1px solid #3d4b41;
+  border-radius: 10px;
+  background: #111713;
+  color: #eaf0ea;
+  font: inherit;
+}
+
+.ai-edit-form textarea {
+  min-height: 180px;
+  resize: vertical;
+}
+
+.ai-file-path {
+  margin: 0;
+  color: #7e8b80;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.ai-empty {
+  margin: 0;
+  color: #9fac9f;
+  font-size: 14px;
+}
+
+.ai-history-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-history-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #2b382f;
+  border-radius: 10px;
+  background: #19201c;
+}
+
+.ai-history-list b {
+  display: block;
+  color: #eaf0ea;
+  overflow-wrap: anywhere;
+}
+
+.ai-history-list span {
+  color: #8b988d;
+  font-size: 14px;
+}
+
+.ai-chat {
+  display: grid;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ai-message {
+  padding: 12px;
+  border: 1px solid #2b382f;
+  border-radius: 10px;
+  background: #19201c;
+  color: #cfd8cf;
+  font-size: 14px;
+}
+
+.ai-message.assistant {
+  background: #1e2a20;
+}
+
+.ai-message b {
+  display: block;
+  margin-bottom: 5px;
+  color: #d8fa71;
+}
+
+.ai-message span {
+  display: block;
+  margin-top: 6px;
+  color: #7e8b80;
+  font-size: 14px;
+}
+
+.ai-question-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-question-row button {
+  display: grid;
+  place-items: center;
+  width: 47px;
+  border: 1px solid #3c4c41;
+  border-radius: 10px;
+  background: #293c29;
+  color: #d8fa71;
+  cursor: pointer;
+}
+
+.ai-error {
+  margin: 0;
+  color: #ff9a8b;
+  font-size: 14px;
+}
+
+@media (max-width: 560px) {
+  .ai-selector-row,
+  .ai-question-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

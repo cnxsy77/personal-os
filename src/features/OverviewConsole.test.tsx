@@ -16,6 +16,7 @@ describe('OverviewConsole', () => {
 
     render(
       <OverviewConsole
+        data={data}
         state={data.getSnapshot()}
         onTaskToggle={data.toggleTask}
         onTaskDelete={data.deleteTask}
@@ -40,6 +41,7 @@ describe('OverviewConsole', () => {
 
     render(
       <OverviewConsole
+        data={data}
         state={data.getSnapshot()}
         onTaskToggle={data.toggleTask}
         onTaskDelete={data.deleteTask}
@@ -66,6 +68,7 @@ describe('OverviewConsole', () => {
 
     const view = render(
       <OverviewConsole
+        data={data}
         state={data.getSnapshot()}
         onTaskToggle={data.toggleTask}
         onTaskDelete={data.deleteTask}
@@ -78,6 +81,7 @@ describe('OverviewConsole', () => {
 
     view.rerender(
       <OverviewConsole
+        data={data}
         state={data.getSnapshot()}
         onTaskToggle={data.toggleTask}
         onTaskDelete={data.deleteTask}
@@ -107,6 +111,7 @@ describe('OverviewConsole', () => {
 
     render(
       <OverviewConsole
+        data={data}
         state={state}
         onTaskToggle={data.toggleTask}
         onTaskDelete={data.deleteTask}
@@ -129,6 +134,7 @@ describe('OverviewConsole', () => {
 
     const view = render(
       <OverviewConsole
+        data={data}
         state={data.getSnapshot()}
         onTaskToggle={data.toggleTask}
         onTaskEdit={onTaskEdit}
@@ -151,6 +157,7 @@ describe('OverviewConsole', () => {
 
     view.rerender(
       <OverviewConsole
+        data={data}
         state={data.getSnapshot()}
         onTaskToggle={data.toggleTask}
         onTaskEdit={onTaskEdit}

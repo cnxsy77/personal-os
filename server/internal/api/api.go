@@ -7,17 +7,55 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"personal-os/server/internal/ai"
 	"personal-os/server/internal/model"
 	"personal-os/server/internal/store"
 )
 
 type Server struct {
-	store *store.Store
+	store      *store.Store
+	aiClient   ai.Client
+	reportsDir string
+	now        func() time.Time
 }
 
-func New(store *store.Store) *Server {
-	return &Server{store: store}
+type Option func(*Server)
+
+func WithAIClient(client ai.Client) Option {
+	return func(server *Server) {
+		server.aiClient = client
+	}
+}
+
+func WithReportsDir(path string) Option {
+	return func(server *Server) {
+		server.reportsDir = path
+	}
+}
+
+func WithNow(now func() time.Time) Option {
+	return func(server *Server) {
+		server.now = now
+	}
+}
+
+func New(store *store.Store, options ...Option) *Server {
+	config, configErr := ai.LoadConfig("server/.env")
+	if configErr != nil {
+		config = ai.DefaultConfig()
+	}
+	server := &Server{
+		store:      store,
+		aiClient:   ai.NewClient(config),
+		reportsDir: "server/reports/ai-summaries",
+		now:        time.Now,
+	}
+	for _, option := range options {
+		option(server)
+	}
+	return server
 }
 
 func (s *Server) Handler() http.Handler {
@@ -91,6 +129,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	mux.HandleFunc("GET /api/ai/config", s.getAIConfig)
+	mux.HandleFunc("POST /api/ai/summaries", s.write(s.generateAISummary))
+	mux.HandleFunc("PATCH /api/ai/summaries/{id}", s.write(s.updateAISummary))
+	mux.HandleFunc("DELETE /api/ai/summaries/{id}", s.write(s.deleteAISummary))
+	mux.HandleFunc("POST /api/ai/summaries/{id}/export", s.write(s.exportAISummary))
+	mux.HandleFunc("POST /api/ai/chat", s.write(s.chatWithAI))
 	return s.securityMiddleware(mux)
 }
 
@@ -276,7 +320,7 @@ func writeStoreError(w http.ResponseWriter, err error) {
 	switch message {
 	case "计划任务不存在", "项目不存在", "记账记录不存在", "周期记录不存在", "订单不存在", "导入批次不存在",
 		"学习记录不存在", "学习路径不存在", "学习资料不存在", "学习课时不存在", "学习笔记不存在",
-		"笔记文件夹不存在", "周复盘不存在", "训练记录不存在", "身体指标记录不存在":
+		"笔记文件夹不存在", "周复盘不存在", "训练记录不存在", "身体指标记录不存在", "AI 总结不存在":
 		writeError(w, http.StatusNotFound, "not_found", message)
 	default:
 		writeError(w, http.StatusBadRequest, "invalid_input", message)

@@ -31,3 +31,5 @@ server/backups/
 server/**/*.db
 server/**/*.db-shm
 server/**/*.db-wal
+server/.env
+server/reports/

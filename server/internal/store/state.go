@@ -77,7 +77,10 @@ func (s *Store) loadDomainState(ctx context.Context, state *model.State) error {
 	if err := s.loadWorkouts(ctx, state); err != nil {
 		return err
 	}
-	return s.loadHealthMetrics(ctx, state)
+	if err := s.loadHealthMetrics(ctx, state); err != nil {
+		return err
+	}
+	return s.loadAISummaries(ctx, state)
 }
 
 func (s *Store) loadTransactions(ctx context.Context, state *model.State) error {
