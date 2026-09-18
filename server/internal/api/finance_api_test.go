@@ -47,6 +47,7 @@ func TestSettingsAndFinanceWriteAPIs(t *testing.T) {
 		"category":    "电子设备",
 		"date":        "2026-09-17",
 		"note":        "笔记本定金",
+		"tag":         "installment",
 		"stage":       "deposit",
 		"newOrder":    map[string]any{"name": "笔记本", "expectedTotalCents": 1000000},
 	}, headers)
@@ -62,15 +63,18 @@ func TestSettingsAndFinanceWriteAPIs(t *testing.T) {
 	if state.Transactions[0].OrderID == nil || *state.Transactions[0].OrderID != orderID {
 		t.Fatalf("transaction was not linked to its new order")
 	}
+	if state.Transactions[0].Tag != model.TransactionTag("installment") {
+		t.Fatalf("transaction tag was not retained: %+v", state.Transactions[0])
+	}
 
 	updated := request(t, handler, http.MethodPatch, "/api/transactions/"+transactionID, map[string]any{
 		"kind": "expense", "amountCents": 260000, "category": "电子设备", "date": "2026-09-18",
-		"orderId": orderID, "stage": "deposit", "source": "manual",
+		"orderId": orderID, "stage": "deposit", "source": "manual", "tag": "installment",
 	}, headers)
 	if updated.Code != http.StatusOK {
 		t.Fatalf("update transaction status = %d, body = %s", updated.Code, updated.Body.String())
 	}
-	if got := decodeState(t, updated); len(got.Transactions) != 1 || got.Transactions[0].AmountCents != 260000 || got.Transactions[0].Date != "2026-09-18" {
+	if got := decodeState(t, updated); len(got.Transactions) != 1 || got.Transactions[0].AmountCents != 260000 || got.Transactions[0].Date != "2026-09-18" || got.Transactions[0].Tag != model.TransactionTag("installment") {
 		t.Fatalf("transaction update failed: %+v", got.Transactions)
 	}
 

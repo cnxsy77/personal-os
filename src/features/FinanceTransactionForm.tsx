@@ -196,6 +196,7 @@ export function FinanceTransactionForm({
           >
             <option value="normal">普通</option>
             {kind !== 'transfer' ? <option value="subscription">订阅</option> : null}
+            {kind !== 'transfer' ? <option value="installment">分期</option> : null}
             {kind === 'income' ? <option value="refund">退款</option> : null}
           </select>
         </div>

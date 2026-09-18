@@ -90,6 +90,36 @@ describe('finance quick capture', () => {
     expect(data.getSnapshot().transactions).toHaveLength(1)
   })
 
+  it('records an installment expense and displays its tag', async () => {
+    const user = userEvent.setup()
+    const data = createLocalPersonalOSData({ storage: createMemoryStorage() })
+    const today = toDateKey(new Date())
+    render(<App data={data} />)
+
+    await user.click(screen.getByRole('button', { name: '记账' }))
+    await user.click(screen.getByRole('button', { name: '添加记录' }))
+    await user.type(screen.getByLabelText('金额'), '1200')
+    await user.selectOptions(screen.getByLabelText('分类'), '购物')
+    await user.selectOptions(screen.getByLabelText('记录类型'), 'installment')
+    await user.click(screen.getByRole('button', { name: '记录' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText('支出已记录')).toBeInTheDocument()
+    const records = screen.getByRole('list', {
+      name: `${today.replaceAll('-', '.')} 收支流水`,
+    })
+    expect(records).toHaveTextContent('分期')
+    expect(data.getSnapshot().transactions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'expense',
+          amountCents: 120000,
+          tag: 'installment',
+        }),
+      ]),
+    )
+  })
+
   it('edits and deletes a transaction with confirmation', async () => {
     const user = userEvent.setup()
     const data = createLocalPersonalOSData({ storage: createMemoryStorage() })

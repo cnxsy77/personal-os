@@ -577,7 +577,7 @@ func isExternalBillSource(value string) bool {
 }
 
 func isTransactionTag(value string) bool {
-	return value == "" || value == "normal" || value == "subscription" || value == "refund"
+	return value == "" || value == "normal" || value == "subscription" || value == "installment" || value == "refund"
 }
 
 func uniqueBillError(err error) error {

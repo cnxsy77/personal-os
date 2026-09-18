@@ -2363,6 +2363,7 @@ function isTransactionTag(value: unknown): value is TransactionTag {
   return (
     value === 'normal' ||
     value === 'subscription' ||
+    value === 'installment' ||
     value === 'refund'
   )
 }

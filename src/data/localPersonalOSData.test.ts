@@ -154,6 +154,7 @@ describe('local Personal OS data', () => {
       amountCents: 1250,
       category: '交通',
       date: '2026-09-11',
+      tag: 'installment',
     })
 
     const reloaded = createLocalPersonalOSData({ storage })
@@ -164,6 +165,7 @@ describe('local Personal OS data', () => {
       amountCents: 1250,
       category: '交通',
       date: '2026-09-11',
+      tag: 'installment',
     })
   })
 

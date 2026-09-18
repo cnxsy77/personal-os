@@ -74,6 +74,7 @@ type Props = {
 
 const tagLabels: Record<string, string> = {
   subscription: '订阅',
+  installment: '分期',
   refund: '退款',
 }
 

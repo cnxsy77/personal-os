@@ -36,7 +36,11 @@ export type ProjectUpdateInput = ProjectInput
 
 export type TransactionKind = 'expense' | 'income' | 'transfer'
 
-export type TransactionTag = 'normal' | 'subscription' | 'refund'
+export type TransactionTag =
+  | 'normal'
+  | 'subscription'
+  | 'installment'
+  | 'refund'
 
 export type PaymentStage = 'deposit' | 'final' | 'full'
 
